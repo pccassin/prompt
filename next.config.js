@@ -6,6 +6,13 @@ const nextConfig = {
   },
   basePath: process.env.NODE_ENV === 'production' ? '/prompt' : '',
   assetPrefix: process.env.NODE_ENV === 'production' ? '/prompt/' : '',
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': './src',
+    };
+    return config;
+  },
 };
 
 module.exports = nextConfig;

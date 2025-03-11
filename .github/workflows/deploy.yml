@@ -13,6 +13,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      NODE_ENV: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,8 +31,6 @@ jobs:
 
       - name: Build Project
         run: npm run build
-        env:
-          NODE_ENV: production
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
