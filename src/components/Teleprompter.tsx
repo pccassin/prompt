@@ -13,10 +13,18 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
   const [scrollSpeed, setScrollSpeed] = useState(2); // pixels per frame
   const [fontSize, setFontSize] = useState(32);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
 
   const scroll = () => {
     if (containerRef.current) {
+      const maxScroll = contentRef.current
+        ? contentRef.current.offsetHeight - containerRef.current.offsetHeight
+        : 0;
+      if (containerRef.current.scrollTop >= maxScroll) {
+        setIsScrolling(false);
+        return;
+      }
       containerRef.current.scrollTop += scrollSpeed;
       animationFrameRef.current = requestAnimationFrame(scroll);
     }
@@ -53,24 +61,27 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white p-4">
+    <div className="flex flex-col h-[calc(100vh-12rem)] bg-black text-white p-4 rounded-lg">
       <div className="flex justify-center space-x-4 mb-4">
         <button
           onClick={() => setIsScrolling(!isScrolling)}
-          className="p-2 rounded-full bg-blue-600 hover:bg-blue-700"
+          className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors"
+          title={isScrolling ? 'Pause' : 'Play'}
         >
           {isScrolling ? <FaPause /> : <FaPlay />}
         </button>
         <button
           onClick={resetScroll}
-          className="p-2 rounded-full bg-gray-600 hover:bg-gray-700"
+          className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+          title="Reset"
         >
           <FaUndo />
         </button>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => adjustSpeed(-0.5)}
-            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700"
+            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+            title="Decrease Speed"
           >
             <FaMinus />
           </button>
@@ -79,7 +90,8 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
           </span>
           <button
             onClick={() => adjustSpeed(0.5)}
-            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700"
+            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+            title="Increase Speed"
           >
             <FaPlus />
           </button>
@@ -87,14 +99,16 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => adjustFontSize(-2)}
-            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700"
+            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+            title="Decrease Font Size"
           >
             <MdTextDecrease />
           </button>
           <span className="min-w-[3rem] text-center">{fontSize}px</span>
           <button
             onClick={() => adjustFontSize(2)}
-            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700"
+            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+            title="Increase Font Size"
           >
             <MdTextIncrease />
           </button>
@@ -102,13 +116,14 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
       </div>
       <div
         ref={containerRef}
-        className="flex-1 overflow-y-hidden mirror-text"
+        className="flex-1 overflow-y-scroll mirror-text hide-scrollbar"
         style={{
           perspective: '1000px',
           transform: 'rotateX(10deg)',
         }}
       >
         <div
+          ref={contentRef}
           className="whitespace-pre-wrap p-4"
           style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
         >
