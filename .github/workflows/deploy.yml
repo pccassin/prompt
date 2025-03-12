@@ -30,7 +30,7 @@ jobs:
 
       - name: Install Tailwind CSS and PostCSS
         run: |
-          npm install -D tailwindcss@latest postcss@latest autoprefixer@latest
+          npm install -D tailwindcss@latest @tailwindcss/postcss postcss autoprefixer
 
       - name: Create Tailwind config
         run: |
@@ -59,7 +59,7 @@ jobs:
           cat > postcss.config.js << EOL
           module.exports = {
             plugins: {
-              tailwindcss: {},
+              '@tailwindcss/postcss': {},
               autoprefixer: {},
             },
           }
