@@ -121,9 +121,11 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: [build, promote-staging]
-    if: always() && (needs.build.result == 'success' || needs.promote-staging.result == 'success')
+    needs: build
+    if: ${{ !github.event.inputs.promote_staging }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
