@@ -75,7 +75,7 @@ jobs:
           touch out/.nojekyll
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: staging-build
           path: out
@@ -95,6 +95,9 @@ jobs:
       name: staging
       url: https://pccassin.github.io/prompt-staging
     steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v2
