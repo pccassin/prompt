@@ -12,12 +12,11 @@ permissions:
   actions: read
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-    env:
-      NEXT_TELEMETRY_DISABLED: 1
-      NODE_ENV: production
-      NEXT_PUBLIC_BASE_PATH: /prompt-staging
+    environment:
+      name: staging
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,16 +79,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
-          name: staging-build
           path: out
 
-  deploy-staging:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: staging
-      url: https://pccassin.github.io/prompt-staging
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
