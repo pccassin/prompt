@@ -154,8 +154,15 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
   const togglePIPMode = () => {
     if (!ENABLE_PIP_MODE) return;
     setIsPIPMode(!isPIPMode);
+    // Reset position when toggling PIP mode
     if (wrapperRef.current) {
       wrapperRef.current.style.transform = 'translate(0px, 0px)';
+    }
+    // Force a reflow to ensure styles are applied
+    if (containerRef.current) {
+      containerRef.current.style.display = 'none';
+      containerRef.current.offsetHeight; // Force reflow
+      containerRef.current.style.display = '';
     }
   };
 
@@ -166,9 +173,10 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
         isPIPMode
           ? 'fixed top-4 right-4 w-96 z-50 cursor-move shadow-2xl rounded-lg'
           : 'w-full'
-      } transition-all duration-300`}
+      } transition-all duration-300 ease-in-out`}
       style={{
         opacity: opacity,
+        transform: isPIPMode ? undefined : 'none',
       }}
     >
       <div
