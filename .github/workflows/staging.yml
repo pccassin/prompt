@@ -6,9 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
+  actions: read
 
 jobs:
   build:
@@ -45,7 +46,12 @@ jobs:
               './src/app/**/*.{js,ts,jsx,tsx,mdx}',
             ],
             theme: {
-              extend: {},
+              extend: {
+                fontFamily: {
+                  inter: ['var(--font-inter)'],
+                  orbitron: ['var(--font-orbitron)'],
+                },
+              },
             },
             plugins: [],
           }
@@ -65,7 +71,7 @@ jobs:
           touch out/.nojekyll
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: staging-build
           path: out
@@ -74,8 +80,8 @@ jobs:
       - name: Deploy to Staging Branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          branch: staging
           folder: out
+          branch: staging
           clean: true
 
   deploy-staging:
@@ -87,4 +93,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4 
+        uses: actions/deploy-pages@v4
