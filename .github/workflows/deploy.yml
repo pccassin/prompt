@@ -12,9 +12,10 @@ on:
         default: false
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
+  actions: read
 
 jobs:
   promote-staging:
@@ -22,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download staging artifact
-        uses: dawidd6/action-download-artifact@v2
+        uses: dawidd6/action-download-artifact@v3
         with:
           github_token: ${{secrets.GITHUB_TOKEN}}
           workflow: staging.yml
@@ -34,7 +35,7 @@ jobs:
         uses: actions/configure-pages@v4
 
       - name: Upload production artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: out
 
@@ -61,15 +62,16 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Clean install dependencies
+      - name: Install dependencies
         run: |
-          rm -rf node_modules
-          rm -f package-lock.json
-          npm install
+          npm ci
 
-      - name: Install and configure Tailwind CSS
+      - name: Install Tailwind CSS and PostCSS
         run: |
           npm install -D tailwindcss@latest postcss@latest autoprefixer@latest
+
+      - name: Create Tailwind config
+        run: |
           cat > tailwind.config.js << EOL
           /** @type {import('tailwindcss').Config} */
           module.exports = {
@@ -79,11 +81,19 @@ jobs:
               './src/app/**/*.{js,ts,jsx,tsx,mdx}',
             ],
             theme: {
-              extend: {},
+              extend: {
+                fontFamily: {
+                  inter: ['var(--font-inter)'],
+                  orbitron: ['var(--font-orbitron)'],
+                },
+              },
             },
             plugins: [],
           }
           EOL
+
+      - name: Create PostCSS config
+        run: |
           cat > postcss.config.js << EOL
           module.exports = {
             plugins: {
@@ -102,7 +112,7 @@ jobs:
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: out
 

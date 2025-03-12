@@ -6,9 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
+  actions: read
 
 jobs:
   build:
@@ -27,15 +28,16 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Clean install dependencies
+      - name: Install dependencies
         run: |
-          rm -rf node_modules
-          rm -f package-lock.json
-          npm install
+          npm ci
 
-      - name: Install and configure Tailwind CSS
+      - name: Install Tailwind CSS and PostCSS
         run: |
           npm install -D tailwindcss@latest postcss@latest autoprefixer@latest
+
+      - name: Create Tailwind config
+        run: |
           cat > tailwind.config.js << EOL
           /** @type {import('tailwindcss').Config} */
           module.exports = {
@@ -45,11 +47,19 @@ jobs:
               './src/app/**/*.{js,ts,jsx,tsx,mdx}',
             ],
             theme: {
-              extend: {},
+              extend: {
+                fontFamily: {
+                  inter: ['var(--font-inter)'],
+                  orbitron: ['var(--font-orbitron)'],
+                },
+              },
             },
             plugins: [],
           }
           EOL
+
+      - name: Create PostCSS config
+        run: |
           cat > postcss.config.js << EOL
           module.exports = {
             plugins: {
@@ -65,7 +75,7 @@ jobs:
           touch out/.nojekyll
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: staging-build
           path: out
@@ -74,8 +84,8 @@ jobs:
       - name: Deploy to Staging Branch
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          branch: staging
           folder: out
+          branch: staging
           clean: true
 
   deploy-staging:
@@ -87,4 +97,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4 
+        uses: actions/deploy-pages@v4

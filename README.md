@@ -1,68 +1,100 @@
-# Prompt - Web Teleprompter
+# Prompt - Teleprompter Web App
 
-A modern, web-based teleprompter application built with Next.js and TypeScript. Perfect for presentations, speeches, and video recordings.
+A modern, feature-rich teleprompter web application built with Next.js and TypeScript.
 
 ## Features
 
-- Text input through direct typing, file upload (.txt), or Google Docs link
-- Smooth scrolling with adjustable speed
-- Adjustable font size
-- Play/Pause and Reset controls
-- Mobile and desktop responsive
-- Dark mode interface
-- Mirror effect for professional teleprompter setups
+- Adjustable scroll speed and font size
+- Picture-in-Picture mode with opacity control
+- Draggable floating window
+- Mirror text display
+- Modern UI with smooth animations
 
-## Getting Started
+## Development Workflow
 
-### Prerequisites
+This project uses a staging-to-production deployment workflow for safe and controlled releases.
 
-- Node.js 18 or later
-- npm or yarn
+### Environments
 
-### Installation
+- **Staging**: https://pccassin.github.io/prompt-staging
+- **Production**: https://pccassin.github.io/prompt
 
-1. Clone the repository:
-   \`\`\`bash
-   git clone https://github.com/yourusername/prompt.git
-   cd prompt
-   \`\`\`
+### Branch Structure
 
-2. Install dependencies:
-   \`\`\`bash
+- `develop` - Development branch, deploys to staging
+- `main` - Production branch, deploys to production
+- Feature branches should be created from `develop`
+
+### Development Process
+
+1. Create a feature branch from `develop`:
+   ```bash
+   git checkout develop
+   git pull origin develop
+   git checkout -b feature/your-feature-name
+   ```
+
+2. Make your changes and commit them:
+   ```bash
+   git add .
+   git commit -m "Description of your changes"
+   git push origin feature/your-feature-name
+   ```
+
+3. Create a Pull Request to merge into `develop`
+4. After review and approval, merge into `develop`
+5. Changes will automatically deploy to staging
+
+### Promoting to Production
+
+There are two ways to deploy to production:
+
+1. **Direct Push to Main**:
+   - For urgent hotfixes only
+   - Will trigger automatic production deployment
+
+2. **Promote Staging to Production**:
+   - Recommended approach for regular releases
+   - Steps:
+     1. Go to GitHub Actions
+     2. Select "Deploy to Production" workflow
+     3. Click "Run workflow"
+     4. Select "main" branch
+     5. Check "Promote staging build to production"
+     6. Click "Run workflow"
+
+### Environment Configuration
+
+The app uses different base paths for staging and production:
+- Staging: `/prompt-staging`
+- Production: `/prompt`
+
+Configuration is handled automatically by the deployment workflows.
+
+## Local Development
+
+1. Install dependencies:
+   ```bash
    npm install
-   \`\`\`
+   ```
 
-3. Run the development server:
-   \`\`\`bash
+2. Start development server:
+   ```bash
    npm run dev
-   \`\`\`
+   ```
 
-4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-### Building for Production
-
-To create a production build:
-
-\`\`\`bash
-npm run build
-\`\`\`
-
-## Deployment
-
-This project is configured for GitHub Pages deployment. Simply push to the main branch, and the GitHub Action will automatically deploy your changes.
-
-## Usage
-
-1. Enter or paste your text in the input area
-2. Adjust font size and scroll speed as needed
-3. Click the play button to start scrolling
-4. Use the controls to adjust speed or pause as needed
-5. Click reset to return to the beginning
+3. Build for production:
+   ```bash
+   npm run build
+   ```
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Create a feature branch from `develop`
+2. Make your changes
+3. Submit a Pull Request to `develop`
+4. After testing in staging, promote to production
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - See LICENSE file for details
