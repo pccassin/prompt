@@ -74,12 +74,14 @@ jobs:
           npm run build
           touch out/.nojekyll
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
         with:
-          folder: out
-          branch: staging
-          clean: true
+          name: staging-build
+          path: out
 
   deploy-staging:
     needs: build
