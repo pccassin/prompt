@@ -28,15 +28,16 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Clean install dependencies
+      - name: Install dependencies
         run: |
-          rm -rf node_modules
-          rm -f package-lock.json
-          npm install
+          npm ci
 
-      - name: Install and configure Tailwind CSS
+      - name: Install Tailwind CSS and PostCSS
         run: |
           npm install -D tailwindcss@latest postcss@latest autoprefixer@latest
+
+      - name: Create Tailwind config
+        run: |
           cat > tailwind.config.js << EOL
           /** @type {import('tailwindcss').Config} */
           module.exports = {
@@ -56,6 +57,9 @@ jobs:
             plugins: [],
           }
           EOL
+
+      - name: Create PostCSS config
+        run: |
           cat > postcss.config.js << EOL
           module.exports = {
             plugins: {
