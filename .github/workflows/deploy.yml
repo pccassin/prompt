@@ -29,16 +29,13 @@ jobs:
 
       - name: Clean install dependencies
         run: |
-          npm cache clean --force
           rm -rf node_modules
           rm -f package-lock.json
           npm install
 
-      - name: Install Tailwind CSS
-        run: npm install -D tailwindcss@latest postcss@latest autoprefixer@latest
-
-      - name: Create Tailwind Config
+      - name: Install and configure Tailwind CSS
         run: |
+          npm install -D tailwindcss@latest postcss@latest autoprefixer@latest
           cat > tailwind.config.js << EOL
           /** @type {import('tailwindcss').Config} */
           module.exports = {
@@ -53,9 +50,6 @@ jobs:
             plugins: [],
           }
           EOL
-
-      - name: Create PostCSS Config
-        run: |
           cat > postcss.config.js << EOL
           module.exports = {
             plugins: {
@@ -66,7 +60,9 @@ jobs:
           EOL
 
       - name: Build Project
-        run: npm run build
+        run: |
+          npm run build
+          touch out/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
