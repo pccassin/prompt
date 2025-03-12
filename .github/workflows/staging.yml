@@ -75,11 +75,9 @@ jobs:
           touch out/.nojekyll
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: staging-build
           path: out
-          retention-days: 7
 
       - name: Deploy to Staging Branch
         uses: JamesIves/github-pages-deploy-action@v4
