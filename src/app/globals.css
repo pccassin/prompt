@@ -62,3 +62,18 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+/* PIP Mode Styles */
+.cursor-move {
+  cursor: move;
+  cursor: grab;
+}
+
+.cursor-move:active {
+  cursor: grabbing;
+}
+
+/* Prevent text selection while dragging */
+.cursor-move * {
+  user-select: none;
+}
