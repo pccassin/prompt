@@ -13,7 +13,6 @@ import {
   FaFastBackward,
   FaGripVertical,
   FaTimes,
-  FaGithub,
 } from 'react-icons/fa';
 import {
   MdTextIncrease,
@@ -24,7 +23,6 @@ import {
 } from 'react-icons/md';
 import { BsTextParagraph } from 'react-icons/bs';
 import ReactDOM from 'react-dom/client';
-import GitHubMarkdownSelector from './GitHubMarkdownSelector';
 
 interface TeleprompterProps {
   text: string;
@@ -171,9 +169,6 @@ const ExternalWindowTeleprompter = ({
   isPlaying,
   speedMultiplier,
   isInfiniteScroll,
-  opacity,
-  fileName,
-  onPlayPause,
   onClose,
 }: {
   text: string;
@@ -182,40 +177,22 @@ const ExternalWindowTeleprompter = ({
   isPlaying: boolean;
   speedMultiplier: number;
   isInfiniteScroll: boolean;
-  opacity: number;
-  fileName?: string;
-  onPlayPause: () => void;
   onClose: () => void;
 }) => {
   return (
-    <div
-      className="mini-player-container"
-      style={{ backgroundColor: `rgba(0, 0, 0, ${opacity})` }}
-    >
+    <div className="mini-player-container">
       <div className="mini-player-header">
         <div className="flex items-center space-x-2">
           <FaGripVertical className="text-xs text-gray-400" />
           <span className="text-xs font-medium text-white">Teleprompter</span>
-          {fileName && (
-            <span className="text-xs text-gray-400 ml-2">{fileName}</span>
-          )}
         </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={onPlayPause}
-            className="p-1 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors text-xs"
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? <FaPause size={10} /> : <FaPlay size={10} />}
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors text-xs"
-            title="Close Window"
-          >
-            <FaTimes size={10} />
-          </button>
-        </div>
+        <button
+          onClick={onClose}
+          className="p-1 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors text-xs"
+          title="Close Window"
+        >
+          <FaTimes size={10} />
+        </button>
       </div>
       <div
         className="mini-player-content hide-scrollbar"
@@ -227,7 +204,6 @@ const ExternalWindowTeleprompter = ({
           style={{
             fontSize: `${Math.max(12, fontSize * 0.6)}px`,
             lineHeight: lineHeight,
-            opacity: opacity,
           }}
         >
           {text}
@@ -243,8 +219,7 @@ const ExternalWindowTeleprompter = ({
   );
 };
 
-export default function Teleprompter({ text: initialText }: TeleprompterProps) {
-  const [text, setText] = useState(initialText || '');
+export default function Teleprompter({ text }: TeleprompterProps) {
   const [isScrolling, setIsScrolling] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [fontSize, setFontSize] = useState(32);
@@ -261,8 +236,6 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
   const [externalWindow, setExternalWindow] = useState<Window | null>(null);
   const externalAnimationRef = useRef<number>();
   const externalLastTimeRef = useRef<number>(0);
-  const [showGitHubSelector, setShowGitHubSelector] = useState(false);
-  const [currentFileName, setCurrentFileName] = useState('');
 
   // Calculate actual scroll speed based on font size and speed multiplier
   const getScrollSpeed = (deltaTime: number) => {
@@ -416,25 +389,7 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
   };
 
   const adjustOpacity = (delta: number) => {
-    const newOpacity = Math.max(0.3, Math.min(1, opacity + delta));
-    setOpacity(newOpacity);
-
-    // Apply opacity to external window
-    if (externalWindow) {
-      const externalContent =
-        externalWindow.document.getElementById('external-content');
-      if (externalContent) {
-        externalContent.style.opacity = String(newOpacity);
-      }
-
-      // Update background for true translucency
-      const container = externalWindow.document.querySelector(
-        '.mini-player-container'
-      ) as HTMLElement;
-      if (container) {
-        container.style.backgroundColor = `rgba(0, 0, 0, ${newOpacity})`;
-      }
-    }
+    setOpacity((prev) => Math.max(0.3, Math.min(1, prev + delta)));
   };
 
   const handlePlayPause = () => {
@@ -525,9 +480,6 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
           isPlaying={isPlaying}
           speedMultiplier={speedMultiplier}
           isInfiniteScroll={isInfiniteScroll}
-          opacity={opacity}
-          fileName={currentFileName}
-          onPlayPause={handlePlayPause}
           onClose={() => {
             newWindow.close();
             setExternalWindow(null);
@@ -548,8 +500,6 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
     isPlaying,
     speedMultiplier,
     isInfiniteScroll,
-    opacity,
-    currentFileName,
   ]);
 
   // Cleanup on unmount
@@ -560,15 +510,6 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
       }
     };
   }, [externalWindow]);
-
-  const handleMarkdownSelect = (markdownContent: string, fileName: string) => {
-    setText(markdownContent);
-    setCurrentFileName(fileName);
-    setShowGitHubSelector(false);
-
-    // Reset scroll position
-    resetScroll();
-  };
 
   return (
     <>
@@ -582,11 +523,6 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
             <div className="flex items-center space-x-2">
               <FaGripVertical className="cursor-move" />
               <span className="text-sm font-medium">Prompt Controls</span>
-              {currentFileName && (
-                <span className="text-xs text-gray-400 ml-2">
-                  File: {currentFileName}
-                </span>
-              )}
             </div>
           </div>
           <div className="flex-1 p-4 flex flex-col overflow-hidden">
@@ -750,7 +686,7 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
                     'font-size 0.2s ease-in-out, line-height 0.2s ease-in-out',
                 }}
               >
-                {text || 'Enter your text here...'}
+                {text}
                 {isInfiniteScroll && text && (
                   <>
                     <div className="h-8" /> {/* Spacer */}
@@ -762,18 +698,6 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
           </div>
         </div>
       </div>
-
-      {/* GitHub Markdown Selector Modal */}
-      {showGitHubSelector && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-4xl h-[80vh]">
-            <GitHubMarkdownSelector
-              onSelectMarkdown={handleMarkdownSelect}
-              onClose={() => setShowGitHubSelector(false)}
-            />
-          </div>
-        </div>
-      )}
 
       <div className="fixed bottom-4 right-4 text-xs text-gray-400 z-40">
         <a
