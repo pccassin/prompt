@@ -7,6 +7,7 @@ import GoogleDocsInput from '@/components/GoogleDocsInput';
 
 export default function Home() {
   const [text, setText] = useState('');
+  const [showGitHubSelector, setShowGitHubSelector] = useState(false);
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -21,7 +22,10 @@ export default function Home() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-gray-800 rounded-lg p-6">
-          <GoogleDocsInput onTextChange={setText} />
+          <GoogleDocsInput
+            onTextChange={setText}
+            onGitHubClick={() => setShowGitHubSelector(true)}
+          />
           <div className="mt-4">
             <h3 className="text-lg font-medium mb-2">
               Or paste your text directly:

@@ -731,15 +731,6 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
                   <MdPictureInPicture />
                 </button>
               )}
-
-              {/* GitHub Integration Button */}
-              <button
-                onClick={() => setShowGitHubSelector(true)}
-                className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                title="Load from GitHub"
-              >
-                <FaGithub />
-              </button>
             </div>
             <div
               ref={containerRef}
@@ -759,7 +750,7 @@ export default function Teleprompter({ text: initialText }: TeleprompterProps) {
                     'font-size 0.2s ease-in-out, line-height 0.2s ease-in-out',
                 }}
               >
-                {text}
+                {text || 'Enter your text here...'}
                 {isInfiniteScroll && text && (
                   <>
                     <div className="h-8" /> {/* Spacer */}
