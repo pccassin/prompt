@@ -50,7 +50,7 @@ const cloneStyles = (sourceDoc: Document, targetDoc: Document) => {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      background-color: #000;
+      background-color: transparent;
       color: #fff;
     }
     .flex {
@@ -81,10 +81,10 @@ const cloneStyles = (sourceDoc: Document, targetDoc: Document) => {
       border-color: #374151;
     }
     .bg-gray-900 {
-      background-color: #111827;
+      background-color: rgba(17, 24, 39, 0.9);
     }
     .bg-black {
-      background-color: #000;
+      background-color: rgba(0, 0, 0, 0.9);
     }
     .justify-between {
       justify-content: space-between;
@@ -139,13 +139,15 @@ const cloneStyles = (sourceDoc: Document, targetDoc: Document) => {
       height: 100vh;
       width: 100vw;
       overflow: hidden;
+      background-color: rgba(0, 0, 0, 0.9);
+      transition: background-color 0.2s ease-in-out;
     }
     .mini-player-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 0.5rem;
-      background-color: #111827;
+      background-color: rgba(17, 24, 39, 0.9);
       border-bottom: 1px solid #374151;
     }
     .mini-player-content {
@@ -170,6 +172,7 @@ const ExternalWindowTeleprompter = ({
   speedMultiplier,
   isInfiniteScroll,
   onClose,
+  onPlayPause,
 }: {
   text: string;
   fontSize: number;
@@ -178,6 +181,7 @@ const ExternalWindowTeleprompter = ({
   speedMultiplier: number;
   isInfiniteScroll: boolean;
   onClose: () => void;
+  onPlayPause: () => void;
 }) => {
   return (
     <div className="mini-player-container">
@@ -186,13 +190,22 @@ const ExternalWindowTeleprompter = ({
           <FaGripVertical className="text-xs text-gray-400" />
           <span className="text-xs font-medium text-white">Teleprompter</span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors text-xs"
-          title="Close Window"
-        >
-          <FaTimes size={10} />
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onPlayPause}
+            className="p-1 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors text-xs"
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? <FaPause size={10} /> : <FaPlay size={10} />}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors text-xs"
+            title="Close Window"
+          >
+            <FaTimes size={10} />
+          </button>
+        </div>
       </div>
       <div
         className="mini-player-content hide-scrollbar"
@@ -224,7 +237,6 @@ export default function Teleprompter({ text }: TeleprompterProps) {
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [fontSize, setFontSize] = useState(32);
   const [lineHeight, setLineHeight] = useState(1.5);
-  const [opacity, setOpacity] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
@@ -388,14 +400,25 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     }
   };
 
-  const adjustOpacity = (delta: number) => {
-    setOpacity((prev) => Math.max(0.3, Math.min(1, prev + delta)));
-  };
+  const handlePlayPause = useCallback(() => {
+    const newIsPlaying = !isPlaying;
+    setIsPlaying(newIsPlaying);
+    setIsScrolling(newIsPlaying);
 
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-    setIsScrolling(!isPlaying);
-  };
+    // Ensure external window is synchronized
+    if (externalWindow) {
+      if (newIsPlaying) {
+        externalLastTimeRef.current = 0;
+        externalAnimationRef.current =
+          externalWindow.requestAnimationFrame(scrollExternal);
+      } else {
+        if (externalAnimationRef.current) {
+          externalWindow.cancelAnimationFrame(externalAnimationRef.current);
+          externalAnimationRef.current = undefined;
+        }
+      }
+    }
+  }, [isPlaying, externalWindow, scrollExternal]);
 
   const handleFastForward = () => {
     if (containerRef.current) {
@@ -484,8 +507,20 @@ export default function Teleprompter({ text }: TeleprompterProps) {
             newWindow.close();
             setExternalWindow(null);
           }}
+          onPlayPause={handlePlayPause}
         />
       );
+
+      // Wait for the next frame to ensure styles are applied
+      newWindow.requestAnimationFrame(() => {
+        // Reset scroll position and animation state
+        const externalContainer =
+          newWindow.document.getElementById('external-container');
+        if (externalContainer) {
+          externalContainer.scrollTop = 0;
+          externalLastTimeRef.current = 0;
+        }
+      });
 
       // Handle window close
       newWindow.addEventListener('beforeunload', () => {
@@ -500,6 +535,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     isPlaying,
     speedMultiplier,
     isInfiniteScroll,
+    handlePlayPause,
   ]);
 
   // Cleanup on unmount
@@ -626,30 +662,6 @@ export default function Teleprompter({ text }: TeleprompterProps) {
               >
                 <FaUndo className={isInfiniteScroll ? 'text-green-200' : ''} />
               </button>
-              <div className="flex items-center space-x-2">
-                <MdOpacity className="text-gray-400" />
-                <button
-                  onClick={() => adjustOpacity(-0.1)}
-                  className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                  title="Decrease Opacity"
-                >
-                  <FaMinus />
-                </button>
-                <span
-                  data-display="opacity"
-                  className="min-w-[3rem] text-center flex items-center gap-1"
-                >
-                  {Math.round(opacity * 100)}%
-                </span>
-                <button
-                  onClick={() => adjustOpacity(0.1)}
-                  data-action="opacity-up"
-                  className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                  title="Increase Opacity"
-                >
-                  <FaPlus />
-                </button>
-              </div>
               {ENABLE_MINI_PLAYER && (
                 <button
                   onClick={openExternalWindow}
