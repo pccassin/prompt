@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   FaPlay,
   FaPause,
@@ -12,28 +12,243 @@ import {
   FaFastForward,
   FaFastBackward,
   FaGripVertical,
+  FaTimes,
+  FaGithub,
 } from 'react-icons/fa';
 import {
   MdTextIncrease,
   MdTextDecrease,
   MdOpacity,
   MdSpeed,
+  MdPictureInPicture,
 } from 'react-icons/md';
 import { BsTextParagraph } from 'react-icons/bs';
+import ReactDOM from 'react-dom/client';
+import GitHubMarkdownSelector from './GitHubMarkdownSelector';
 
 interface TeleprompterProps {
   text: string;
 }
 
-// Feature flag for PIP mode
-const ENABLE_PIP_MODE = true;
+// Feature flag for mini-player mode
+const ENABLE_MINI_PLAYER = true;
 
-export default function Teleprompter({ text }: TeleprompterProps) {
+// Helper function to clone styles from main window to external window
+const cloneStyles = (sourceDoc: Document, targetDoc: Document) => {
+  // Add base styles
+  const baseStyles = document.createElement('style');
+  baseStyles.textContent = `
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-color: #000;
+      color: #fff;
+    }
+    .flex {
+      display: flex;
+    }
+    .flex-col {
+      flex-direction: column;
+    }
+    .flex-1 {
+      flex: 1;
+    }
+    .h-full {
+      height: 100%;
+    }
+    .w-full {
+      width: 100%;
+    }
+    .text-white {
+      color: #fff;
+    }
+    .p-2 {
+      padding: 0.5rem;
+    }
+    .border-b {
+      border-bottom-width: 1px;
+    }
+    .border-gray-700 {
+      border-color: #374151;
+    }
+    .bg-gray-900 {
+      background-color: #111827;
+    }
+    .bg-black {
+      background-color: #000;
+    }
+    .justify-between {
+      justify-content: space-between;
+    }
+    .items-center {
+      align-items: center;
+    }
+    .space-x-2 > * + * {
+      margin-left: 0.5rem;
+    }
+    .space-x-1 > * + * {
+      margin-left: 0.25rem;
+    }
+    .cursor-move {
+      cursor: move;
+    }
+    .text-xs {
+      font-size: 0.75rem;
+    }
+    .font-medium {
+      font-weight: 500;
+    }
+    .rounded-full {
+      border-radius: 9999px;
+    }
+    .bg-blue-600 {
+      background-color: #2563eb;
+    }
+    .hover\\:bg-blue-700:hover {
+      background-color: #1d4ed8;
+    }
+    .bg-gray-600 {
+      background-color: #4b5563;
+    }
+    .hover\\:bg-gray-700:hover {
+      background-color: #374151;
+    }
+    .transition-colors {
+      transition-property: background-color;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-duration: 150ms;
+    }
+    .overflow-y-auto {
+      overflow-y: auto;
+    }
+    .whitespace-pre-wrap {
+      white-space: pre-wrap;
+    }
+    .mini-player-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+    .mini-player-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem;
+      background-color: #111827;
+      border-bottom: 1px solid #374151;
+    }
+    .mini-player-content {
+      flex: 1;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+    .mini-player-text {
+      white-space: pre-wrap;
+      padding: 1rem;
+    }
+  `;
+  targetDoc.head.appendChild(baseStyles);
+};
+
+// External window component
+const ExternalWindowTeleprompter = ({
+  text,
+  fontSize,
+  lineHeight,
+  isPlaying,
+  speedMultiplier,
+  isInfiniteScroll,
+  opacity,
+  fileName,
+  onPlayPause,
+  onClose,
+}: {
+  text: string;
+  fontSize: number;
+  lineHeight: number;
+  isPlaying: boolean;
+  speedMultiplier: number;
+  isInfiniteScroll: boolean;
+  opacity: number;
+  fileName?: string;
+  onPlayPause: () => void;
+  onClose: () => void;
+}) => {
+  return (
+    <div
+      className="mini-player-container"
+      style={{ backgroundColor: `rgba(0, 0, 0, ${opacity})` }}
+    >
+      <div className="mini-player-header">
+        <div className="flex items-center space-x-2">
+          <FaGripVertical className="text-xs text-gray-400" />
+          <span className="text-xs font-medium text-white">Teleprompter</span>
+          {fileName && (
+            <span className="text-xs text-gray-400 ml-2">{fileName}</span>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={onPlayPause}
+            className="p-1 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors text-xs"
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? <FaPause size={10} /> : <FaPlay size={10} />}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors text-xs"
+            title="Close Window"
+          >
+            <FaTimes size={10} />
+          </button>
+        </div>
+      </div>
+      <div
+        className="mini-player-content hide-scrollbar"
+        id="external-container"
+      >
+        <div
+          className="mini-player-text"
+          id="external-content"
+          style={{
+            fontSize: `${Math.max(12, fontSize * 0.6)}px`,
+            lineHeight: lineHeight,
+            opacity: opacity,
+          }}
+        >
+          {text}
+          {isInfiniteScroll && text && (
+            <>
+              <div style={{ height: '1rem' }} /> {/* Spacer */}
+              {text}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function Teleprompter({ text: initialText }: TeleprompterProps) {
+  const [text, setText] = useState(initialText || '');
   const [isScrolling, setIsScrolling] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [fontSize, setFontSize] = useState(32);
   const [lineHeight, setLineHeight] = useState(1.5);
-  const [isPIPMode, setIsPIPMode] = useState(false);
   const [opacity, setOpacity] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -43,14 +258,11 @@ export default function Teleprompter({ text }: TeleprompterProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [isInfiniteScroll, setIsInfiniteScroll] = useState(false);
-  const [pipSize, setPipSize] = useState({ width: 384, height: 256 });
-  const [isPipFloating, setIsPipFloating] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStartSize, setResizeStartSize] = useState({
-    width: 0,
-    height: 0,
-  });
-  const [resizeStartPos, setResizeStartPos] = useState({ x: 0, y: 0 });
+  const [externalWindow, setExternalWindow] = useState<Window | null>(null);
+  const externalAnimationRef = useRef<number>();
+  const externalLastTimeRef = useRef<number>(0);
+  const [showGitHubSelector, setShowGitHubSelector] = useState(false);
+  const [currentFileName, setCurrentFileName] = useState('');
 
   // Calculate actual scroll speed based on font size and speed multiplier
   const getScrollSpeed = (deltaTime: number) => {
@@ -79,6 +291,37 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     }
   };
 
+  // Separate scroll function for external window
+  const scrollExternal = useCallback(
+    (timestamp: number) => {
+      if (!externalWindow) return;
+
+      if (!externalLastTimeRef.current) externalLastTimeRef.current = timestamp;
+      const deltaTime = timestamp - externalLastTimeRef.current;
+      externalLastTimeRef.current = timestamp;
+
+      const externalContainer =
+        externalWindow.document.getElementById('external-container');
+      const externalContent =
+        externalWindow.document.getElementById('external-content');
+
+      if (externalContainer && externalContent) {
+        const maxScroll = externalContent.offsetHeight / 2;
+
+        if (externalContainer.scrollTop >= maxScroll) {
+          externalContainer.scrollTop = 0;
+        }
+
+        const scrollAmount = getScrollSpeed(deltaTime);
+        externalContainer.scrollTop += scrollAmount;
+        externalAnimationRef.current =
+          externalWindow.requestAnimationFrame(scrollExternal);
+      }
+    },
+    [externalWindow, speedMultiplier, fontSize]
+  );
+
+  // Animation for main window
   useEffect(() => {
     if (isScrolling) {
       lastTimeRef.current = 0;
@@ -95,60 +338,26 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     };
   }, [isScrolling]);
 
-  // Handle PIP mode drag functionality
+  // Animation for external window
   useEffect(() => {
-    if (!ENABLE_PIP_MODE || !isPIPMode || !wrapperRef.current) return;
-
-    let isDragging = false;
-    let currentX: number;
-    let currentY: number;
-    let initialX: number;
-    let initialY: number;
-
-    const dragStart = (e: MouseEvent) => {
-      if (e.target instanceof HTMLButtonElement) return; // Don't drag when clicking buttons
-      initialX = e.clientX - currentX;
-      initialY = e.clientY - currentY;
-      isDragging = true;
-    };
-
-    const dragEnd = () => {
-      isDragging = false;
-    };
-
-    const drag = (e: MouseEvent) => {
-      if (!isDragging) return;
-      e.preventDefault();
-      currentX = e.clientX - initialX;
-      currentY = e.clientY - initialY;
-
-      // Keep within viewport bounds
-      const wrapper = wrapperRef.current!;
-      const rect = wrapper.getBoundingClientRect();
-      const maxX = window.innerWidth - rect.width;
-      const maxY = window.innerHeight - rect.height;
-
-      currentX = Math.max(0, Math.min(currentX, maxX));
-      currentY = Math.max(0, Math.min(currentY, maxY));
-
-      wrapper.style.transform = `translate(${currentX}px, ${currentY}px)`;
-    };
-
-    const element = wrapperRef.current;
-    currentX = 0;
-    currentY = 0;
-    element.style.transform = 'translate(0px, 0px)';
-
-    element.addEventListener('mousedown', dragStart);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', dragEnd);
+    if (isScrolling && externalWindow) {
+      externalLastTimeRef.current = 0;
+      externalAnimationRef.current =
+        externalWindow.requestAnimationFrame(scrollExternal);
+    } else {
+      if (externalAnimationRef.current && externalWindow) {
+        externalWindow.cancelAnimationFrame(externalAnimationRef.current);
+        externalAnimationRef.current = undefined;
+      }
+    }
 
     return () => {
-      element.removeEventListener('mousedown', dragStart);
-      document.removeEventListener('mousemove', drag);
-      document.removeEventListener('mouseup', dragEnd);
+      if (externalAnimationRef.current && externalWindow) {
+        externalWindow.cancelAnimationFrame(externalAnimationRef.current);
+        externalAnimationRef.current = undefined;
+      }
     };
-  }, [isPIPMode]);
+  }, [isScrolling, externalWindow, scrollExternal]);
 
   const resetScroll = () => {
     if (containerRef.current) {
@@ -158,6 +367,16 @@ export default function Teleprompter({ text }: TeleprompterProps) {
       setPosition(0);
       lastTimeRef.current = 0;
     }
+
+    // Also reset the external window scroll
+    if (externalWindow) {
+      const externalContainer =
+        externalWindow.document.getElementById('external-container');
+      if (externalContainer) {
+        externalContainer.scrollTop = 0;
+        externalLastTimeRef.current = 0;
+      }
+    }
   };
 
   const adjustSpeed = (delta: number) => {
@@ -166,31 +385,55 @@ export default function Teleprompter({ text }: TeleprompterProps) {
 
   const adjustFontSize = (delta: number) => {
     setFontSize((prev) => Math.max(16, Math.min(72, prev + delta)));
+
+    // Update the external window's font size
+    if (externalWindow) {
+      const externalContent =
+        externalWindow.document.getElementById('external-content');
+      if (externalContent) {
+        externalContent.style.fontSize = `${Math.max(
+          12,
+          (fontSize + delta) * 0.6
+        )}px`;
+      }
+    }
   };
 
   const handleLineHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
     if (!isNaN(value)) {
       setLineHeight(Math.max(1, Math.min(3, value)));
+
+      // Update the external window's line height
+      if (externalWindow) {
+        const externalContent =
+          externalWindow.document.getElementById('external-content');
+        if (externalContent) {
+          externalContent.style.lineHeight = `${value}`;
+        }
+      }
     }
   };
 
   const adjustOpacity = (delta: number) => {
-    setOpacity((prev) => Math.max(0.3, Math.min(1, prev + delta)));
-  };
+    const newOpacity = Math.max(0.3, Math.min(1, opacity + delta));
+    setOpacity(newOpacity);
 
-  const togglePIPMode = () => {
-    if (!ENABLE_PIP_MODE) return;
-    setIsPIPMode(!isPIPMode);
-    // Reset position when toggling PIP mode
-    if (wrapperRef.current) {
-      wrapperRef.current.style.transform = 'translate(0px, 0px)';
-    }
-    // Force a reflow to ensure styles are applied
-    if (containerRef.current) {
-      containerRef.current.style.display = 'none';
-      containerRef.current.offsetHeight; // Force reflow
-      containerRef.current.style.display = '';
+    // Apply opacity to external window
+    if (externalWindow) {
+      const externalContent =
+        externalWindow.document.getElementById('external-content');
+      if (externalContent) {
+        externalContent.style.opacity = String(newOpacity);
+      }
+
+      // Update background for true translucency
+      const container = externalWindow.document.querySelector(
+        '.mini-player-container'
+      ) as HTMLElement;
+      if (container) {
+        container.style.backgroundColor = `rgba(0, 0, 0, ${newOpacity})`;
+      }
     }
   };
 
@@ -207,6 +450,15 @@ export default function Teleprompter({ text }: TeleprompterProps) {
       );
       setPosition(newPosition);
       containerRef.current.scrollTop = newPosition;
+
+      // Also fast forward the external window
+      if (externalWindow) {
+        const externalContainer =
+          externalWindow.document.getElementById('external-container');
+        if (externalContainer) {
+          externalContainer.scrollTop += 100;
+        }
+      }
     }
   };
 
@@ -215,6 +467,15 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     setPosition(newPosition);
     if (containerRef.current) {
       containerRef.current.scrollTop = newPosition;
+
+      // Also fast backward the external window
+      if (externalWindow) {
+        const externalContainer =
+          externalWindow.document.getElementById('external-container');
+        if (externalContainer) {
+          externalContainer.scrollTop -= 100;
+        }
+      }
     }
   };
 
@@ -222,269 +483,111 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     setIsInfiniteScroll(!isInfiniteScroll);
   };
 
-  const handlePipResizeStart = (e: React.MouseEvent) => {
-    if (!isPIPMode) return;
-    e.preventDefault();
-    setIsResizing(true);
-    setResizeStartSize(pipSize);
-    setResizeStartPos({ x: e.clientX, y: e.clientY });
-  };
+  const openExternalWindow = useCallback(() => {
+    // Only run this on the client side
+    if (typeof window === 'undefined') return;
 
-  const handlePipResizeMove = (e: MouseEvent) => {
-    if (!isResizing) return;
-    e.preventDefault();
-    const deltaX = e.clientX - resizeStartPos.x;
-    const deltaY = e.clientY - resizeStartPos.y;
-    setPipSize({
-      width: Math.max(200, Math.min(800, resizeStartSize.width + deltaX)),
-      height: Math.max(150, Math.min(600, resizeStartSize.height + deltaY)),
-    });
-  };
-
-  const handlePipResizeEnd = () => {
-    setIsResizing(false);
-  };
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handlePipResizeMove);
-      document.addEventListener('mouseup', handlePipResizeEnd);
+    if (externalWindow) {
+      externalWindow.close();
+      setExternalWindow(null);
+      return;
     }
-    return () => {
-      document.removeEventListener('mousemove', handlePipResizeMove);
-      document.removeEventListener('mouseup', handlePipResizeEnd);
-    };
-  }, [isResizing]);
 
-  const togglePipFloating = () => {
-    setIsPipFloating(!isPipFloating);
-    if (!isPipFloating && wrapperRef.current) {
-      // Create a new window for floating mode
-      const width = pipSize.width;
-      const height = pipSize.height;
-      const left = (window.screen.width - width) / 2;
-      const top = (window.screen.height - height) / 2;
+    // Open a new window
+    const newWindow = window.open(
+      '',
+      'Teleprompter',
+      'width=400,height=600,resizable=yes,scrollbars=yes'
+    );
 
-      const popup = window.open(
-        '',
-        'Prompt PIP',
-        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+    if (newWindow) {
+      setExternalWindow(newWindow);
+
+      // Add base HTML structure
+      newWindow.document.write(
+        '<html><head><title>Teleprompter</title></head><body><div id="root"></div></body></html>'
       );
 
-      if (popup) {
-        // Get all styles from the current document
-        const styles = Array.from(document.styleSheets)
-          .map((sheet) => {
-            try {
-              return Array.from(sheet.cssRules)
-                .map((rule) => rule.cssText)
-                .join('\n');
-            } catch (e) {
-              return '';
-            }
-          })
-          .join('\n');
+      // Clone styles to new window
+      cloneStyles(document, newWindow.document);
 
-        // Create a new document with all necessary styles and scripts
-        popup.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Prompt PIP</title>
-              <style>
-                ${styles}
-                body { margin: 0; background: black; color: white; }
-                .pip-container { width: 100%; height: 100%; }
-              </style>
-            </head>
-            <body>
-              <div class="pip-container">
-                ${wrapperRef.current.innerHTML}
-              </div>
-              <script>
-                // Initialize state in the popup window
-                let isPlaying = false;
-                let speedMultiplier = 1;
-                let fontSize = 32;
-                let opacity = 1;
-                let isInfiniteScroll = false;
+      // Create a root for React
+      const root = ReactDOM.createRoot(
+        newWindow.document.getElementById('root') as HTMLElement
+      );
 
-                // Re-initialize controls in the new window
-                window.addEventListener('load', () => {
-                  const container = document.querySelector('.pip-container');
-                  if (container) {
-                    // Re-attach event listeners
-                    const buttons = container.querySelectorAll('button');
-                    buttons.forEach(button => {
-                      button.addEventListener('click', (e) => {
-                        const action = e.target.closest('button').getAttribute('data-action');
-                        if (action) {
-                          // Handle actions locally in the popup
-                          switch (action) {
-                            case 'play':
-                              isPlaying = !isPlaying;
-                              window.opener.postMessage({ type: 'pip-state', state: { isPlaying } }, '*');
-                              break;
-                            case 'pause':
-                              isPlaying = false;
-                              window.opener.postMessage({ type: 'pip-state', state: { isPlaying } }, '*');
-                              break;
-                            case 'speed-up':
-                              speedMultiplier = Math.min(5, speedMultiplier + 0.5);
-                              window.opener.postMessage({ type: 'pip-state', state: { speedMultiplier } }, '*');
-                              break;
-                            case 'speed-down':
-                              speedMultiplier = Math.max(0.5, speedMultiplier - 0.5);
-                              window.opener.postMessage({ type: 'pip-state', state: { speedMultiplier } }, '*');
-                              break;
-                            case 'font-up':
-                              fontSize = Math.min(72, fontSize + 2);
-                              window.opener.postMessage({ type: 'pip-state', state: { fontSize } }, '*');
-                              break;
-                            case 'font-down':
-                              fontSize = Math.max(16, fontSize - 2);
-                              window.opener.postMessage({ type: 'pip-state', state: { fontSize } }, '*');
-                              break;
-                            case 'opacity-up':
-                              opacity = Math.min(1, opacity + 0.1);
-                              window.opener.postMessage({ type: 'pip-state', state: { opacity } }, '*');
-                              break;
-                            case 'opacity-down':
-                              opacity = Math.max(0.3, opacity - 0.1);
-                              window.opener.postMessage({ type: 'pip-state', state: { opacity } }, '*');
-                              break;
-                            case 'dock':
-                              window.opener.postMessage({ type: 'pip-action', action: 'dock' }, '*');
-                              break;
-                            case 'close':
-                              window.opener.postMessage({ type: 'pip-action', action: 'close' }, '*');
-                              break;
-                          }
-                          // Update UI
-                          updateUI();
-                        }
-                      });
-                    });
-                  }
-                });
+      // Render the teleprompter in the new window
+      root.render(
+        <ExternalWindowTeleprompter
+          text={text}
+          fontSize={fontSize}
+          lineHeight={lineHeight}
+          isPlaying={isPlaying}
+          speedMultiplier={speedMultiplier}
+          isInfiniteScroll={isInfiniteScroll}
+          opacity={opacity}
+          fileName={currentFileName}
+          onPlayPause={handlePlayPause}
+          onClose={() => {
+            newWindow.close();
+            setExternalWindow(null);
+          }}
+        />
+      );
 
-                function updateUI() {
-                  const container = document.querySelector('.pip-container');
-                  if (container) {
-                    // Update speed display
-                    const speedDisplay = container.querySelector('[data-display="speed"]');
-                    if (speedDisplay) speedDisplay.textContent = speedMultiplier + 'x';
-
-                    // Update font size display
-                    const fontSizeDisplay = container.querySelector('[data-display="fontSize"]');
-                    if (fontSizeDisplay) fontSizeDisplay.textContent = fontSize + 'px';
-
-                    // Update opacity display
-                    const opacityDisplay = container.querySelector('[data-display="opacity"]');
-                    if (opacityDisplay) opacityDisplay.textContent = Math.round(opacity * 100) + '%';
-
-                    // Update play/pause button
-                    const playButton = container.querySelector('[data-action="play"]');
-                    if (playButton) {
-                      playButton.innerHTML = isPlaying ? '<svg>...</svg>' : '<svg>...</svg>';
-                    }
-                  }
-                }
-
-                // Listen for messages from the main window
-                window.addEventListener('message', (event) => {
-                  if (event.data.type === 'pip-update') {
-                    const container = document.querySelector('.pip-container');
-                    if (container) {
-                      container.innerHTML = event.data.content;
-                    }
-                  }
-                });
-              </script>
-            </body>
-          </html>
-        `);
-        popup.document.close();
-
-        // Store the popup window reference
-        const popupRef = popup;
-
-        // Listen for messages from the popup
-        window.addEventListener('message', (event) => {
-          if (event.data.type === 'pip-state') {
-            // Update state in the main window
-            const { state } = event.data;
-            if (state.isPlaying !== undefined) setIsPlaying(state.isPlaying);
-            if (state.speedMultiplier !== undefined)
-              setSpeedMultiplier(state.speedMultiplier);
-            if (state.fontSize !== undefined) setFontSize(state.fontSize);
-            if (state.opacity !== undefined) setOpacity(state.opacity);
-          } else if (event.data.type === 'pip-action') {
-            // Handle actions from the popup
-            switch (event.data.action) {
-              case 'dock':
-                setIsPipFloating(false);
-                popupRef.close();
-                break;
-              case 'close':
-                setIsPIPMode(false);
-                setIsPipFloating(false);
-                popupRef.close();
-                break;
-            }
-          }
-        });
-      }
+      // Handle window close
+      newWindow.addEventListener('beforeunload', () => {
+        setExternalWindow(null);
+      });
     }
+  }, [
+    externalWindow,
+    text,
+    fontSize,
+    lineHeight,
+    isPlaying,
+    speedMultiplier,
+    isInfiniteScroll,
+    opacity,
+    currentFileName,
+  ]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (externalWindow) {
+        externalWindow.close();
+      }
+    };
+  }, [externalWindow]);
+
+  const handleMarkdownSelect = (markdownContent: string, fileName: string) => {
+    setText(markdownContent);
+    setCurrentFileName(fileName);
+    setShowGitHubSelector(false);
+
+    // Reset scroll position
+    resetScroll();
   };
 
   return (
     <>
+      {/* Main teleprompter */}
       <div
         ref={wrapperRef}
-        className={`${
-          isPIPMode
-            ? `fixed z-50 cursor-move shadow-2xl rounded-lg ${
-                isPipFloating ? 'border-2 border-blue-500' : ''
-              }`
-            : 'w-full'
-        } transition-all duration-300 ease-in-out`}
-        style={{
-          opacity: opacity,
-          transform: isPIPMode ? undefined : 'none',
-          width: isPIPMode ? `${pipSize.width}px` : '100%',
-          height: isPIPMode ? `${pipSize.height}px` : 'auto',
-        }}
+        className="w-full transition-all duration-300 ease-in-out"
       >
-        <div
-          className={`flex flex-col ${
-            isPIPMode ? 'h-full' : 'h-[calc(100vh-12rem)]'
-          } bg-black text-white rounded-lg overflow-hidden`}
-        >
+        <div className="flex flex-col h-[calc(100vh-12rem)] bg-black text-white rounded-lg overflow-hidden">
           <div className="flex justify-between items-center p-2 border-b border-gray-700">
             <div className="flex items-center space-x-2">
               <FaGripVertical className="cursor-move" />
               <span className="text-sm font-medium">Prompt Controls</span>
+              {currentFileName && (
+                <span className="text-xs text-gray-400 ml-2">
+                  File: {currentFileName}
+                </span>
+              )}
             </div>
-            {isPIPMode && (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={togglePipFloating}
-                  data-action="dock"
-                  className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-700"
-                  title={isPipFloating ? 'Dock PIP' : 'Float PIP'}
-                >
-                  {isPipFloating ? 'Dock' : 'Float'}
-                </button>
-                <button
-                  onClick={() => setIsPIPMode(false)}
-                  data-action="close"
-                  className="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-700"
-                >
-                  Close
-                </button>
-              </div>
-            )}
           </div>
           <div className="flex-1 p-4 flex flex-col overflow-hidden">
             <div className="flex justify-center space-x-2 mb-4 flex-wrap gap-2">
@@ -566,6 +669,8 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                   step="0.1"
                   min="1"
                   max="3"
+                  id="line-height"
+                  name="line-height"
                   className="w-16 bg-gray-700 rounded px-2 py-1 text-center"
                   title="Line Height"
                 />
@@ -585,41 +690,56 @@ export default function Teleprompter({ text }: TeleprompterProps) {
               >
                 <FaUndo className={isInfiniteScroll ? 'text-green-200' : ''} />
               </button>
-              {ENABLE_PIP_MODE && (
-                <>
-                  <div className="flex items-center space-x-2">
-                    <MdOpacity className="text-gray-400" />
-                    <button
-                      onClick={() => adjustOpacity(-0.1)}
-                      className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                      title="Decrease Opacity"
-                    >
-                      <FaMinus />
-                    </button>
-                    <span
-                      data-display="opacity"
-                      className="min-w-[3rem] text-center flex items-center gap-1"
-                    >
-                      {Math.round(opacity * 100)}%
-                    </span>
-                    <button
-                      onClick={() => adjustOpacity(0.1)}
-                      data-action="opacity-up"
-                      className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                      title="Increase Opacity"
-                    >
-                      <FaPlus />
-                    </button>
-                  </div>
-                  <button
-                    onClick={togglePIPMode}
-                    className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                    title={isPIPMode ? 'Exit PIP Mode' : 'Enter PIP Mode'}
-                  >
-                    {isPIPMode ? <FaCompress /> : <FaExpand />}
-                  </button>
-                </>
+              <div className="flex items-center space-x-2">
+                <MdOpacity className="text-gray-400" />
+                <button
+                  onClick={() => adjustOpacity(-0.1)}
+                  className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                  title="Decrease Opacity"
+                >
+                  <FaMinus />
+                </button>
+                <span
+                  data-display="opacity"
+                  className="min-w-[3rem] text-center flex items-center gap-1"
+                >
+                  {Math.round(opacity * 100)}%
+                </span>
+                <button
+                  onClick={() => adjustOpacity(0.1)}
+                  data-action="opacity-up"
+                  className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                  title="Increase Opacity"
+                >
+                  <FaPlus />
+                </button>
+              </div>
+              {ENABLE_MINI_PLAYER && (
+                <button
+                  onClick={openExternalWindow}
+                  className={`p-2 rounded-full transition-colors ${
+                    externalWindow
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                  title={
+                    externalWindow
+                      ? 'Close External Window'
+                      : 'Open External Window'
+                  }
+                >
+                  <MdPictureInPicture />
+                </button>
               )}
+
+              {/* GitHub Integration Button */}
+              <button
+                onClick={() => setShowGitHubSelector(true)}
+                className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                title="Load from GitHub"
+              >
+                <FaGithub />
+              </button>
             </div>
             <div
               ref={containerRef}
@@ -627,7 +747,6 @@ export default function Teleprompter({ text }: TeleprompterProps) {
               style={{
                 perspective: '1000px',
                 transform: 'rotateX(10deg)',
-                height: isPIPMode ? `${pipSize.height - 120}px` : 'auto',
               }}
             >
               <div
@@ -650,15 +769,22 @@ export default function Teleprompter({ text }: TeleprompterProps) {
               </div>
             </div>
           </div>
-          {isPIPMode && (
-            <div
-              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-              onMouseDown={handlePipResizeStart}
-            />
-          )}
         </div>
       </div>
-      <div className="fixed bottom-4 right-4 text-xs text-gray-400 z-50">
+
+      {/* GitHub Markdown Selector Modal */}
+      {showGitHubSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl h-[80vh]">
+            <GitHubMarkdownSelector
+              onSelectMarkdown={handleMarkdownSelect}
+              onClose={() => setShowGitHubSelector(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="fixed bottom-4 right-4 text-xs text-gray-400 z-40">
         <a
           href="https://linkedin.com/in/pccassin"
           target="_blank"
