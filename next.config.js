@@ -25,6 +25,17 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   trailingSlash: true,
+  reactStrictMode: true,
+  swcMinify: true,
+  poweredByHeader: false,
+  compress: true,
+  generateEtags: true,
+  exportPathMap: async function () {
+    return {
+      '/': { page: '/' },
+      '/index.html': { page: '/' },
+    };
+  },
 };
 
 module.exports = nextConfig;
