@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      promote_staging:
+        description: 'Promote staging to production'
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -12,7 +18,8 @@ permissions:
   actions: read
 
 jobs:
-  deploy:
+  build:
+    if: github.event.inputs.promote_staging != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,7 +37,7 @@ jobs:
 
       - name: Install Tailwind CSS and PostCSS
         run: |
-          npm install -D tailwindcss@latest @tailwindcss/postcss postcss autoprefixer
+          npm install -D tailwindcss@3.3.0 postcss autoprefixer
 
       - name: Create Tailwind config
         run: |
@@ -59,7 +66,7 @@ jobs:
           cat > postcss.config.js << EOL
           module.exports = {
             plugins: {
-              '@tailwindcss/postcss': {},
+              tailwindcss: {},
               autoprefixer: {},
             },
           }
@@ -79,3 +86,24 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./out
+
+  promote-staging:
+    if: github.event.inputs.promote_staging == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download staging artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: staging.yml
+          branch: develop
+          name: staging-build
+          path: out
+          check_artifacts: true
+          search_artifacts: true
+
+      - name: Deploy to Production
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: out

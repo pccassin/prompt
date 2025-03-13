@@ -12,7 +12,7 @@ permissions:
   actions: read
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,7 +30,7 @@ jobs:
 
       - name: Install Tailwind CSS and PostCSS
         run: |
-          npm install -D tailwindcss@latest @tailwindcss/postcss postcss autoprefixer
+          npm install -D tailwindcss@3.3.0 postcss autoprefixer
 
       - name: Create Tailwind config
         run: |
@@ -59,7 +59,7 @@ jobs:
           cat > postcss.config.js << EOL
           module.exports = {
             plugins: {
-              '@tailwindcss/postcss': {},
+              tailwindcss: {},
               autoprefixer: {},
             },
           }
@@ -69,14 +69,21 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
           NODE_ENV: production
-          NEXT_PUBLIC_BASE_PATH: /prompt-staging
+          NEXT_PUBLIC_BASE_PATH: /prompt
         run: |
           npm run build
           touch out/.nojekyll
 
-      - name: Deploy to GitHub Pages
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-build
+          path: out
+          retention-days: 1
+
+      - name: Deploy to Staging Branch
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./out
-          destination_dir: staging
+          publish_branch: gh-pages-staging
