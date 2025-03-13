@@ -23,7 +23,7 @@ const ENABLE_PIP_MODE = true;
 
 export default function Teleprompter({ text }: TeleprompterProps) {
   const [isScrolling, setIsScrolling] = useState(false);
-  const [speedLevel, setSpeedLevel] = useState(5); // 1-10 scale
+  const [speedMultiplier, setSpeedMultiplier] = useState(1); // 1x, 2x, etc.
   const [fontSize, setFontSize] = useState(32);
   const [lineHeight, setLineHeight] = useState(1.5);
   const [isPIPMode, setIsPIPMode] = useState(false);
@@ -35,13 +35,13 @@ export default function Teleprompter({ text }: TeleprompterProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
+  const [isInfiniteScroll, setIsInfiniteScroll] = useState(false);
 
-  // Calculate actual scroll speed based on font size and speed level
+  // Calculate actual scroll speed based on font size and speed multiplier
   const getScrollSpeed = (deltaTime: number) => {
-    const baseSpeed = 0.05; // pixels per millisecond at speed level 5 and font size 32
+    const baseSpeed = 0.05; // pixels per millisecond at 1x speed and font size 32
     const fontSizeFactor = fontSize / 32; // Scale based on font size
-    const speedFactor = speedLevel / 5; // Scale based on speed level
-    return baseSpeed * fontSizeFactor * speedFactor * deltaTime;
+    return baseSpeed * fontSizeFactor * speedMultiplier * deltaTime;
   };
 
   const scroll = (timestamp: number) => {
@@ -54,10 +54,16 @@ export default function Teleprompter({ text }: TeleprompterProps) {
         contentRef.current.offsetHeight - containerRef.current.offsetHeight;
 
       if (containerRef.current.scrollTop >= maxScroll) {
-        setIsScrolling(false);
-        setIsPlaying(false);
-        lastTimeRef.current = 0;
-        return;
+        if (isInfiniteScroll) {
+          // Reset to top for infinite scroll
+          containerRef.current.scrollTop = 0;
+          setPosition(0);
+        } else {
+          setIsScrolling(false);
+          setIsPlaying(false);
+          lastTimeRef.current = 0;
+          return;
+        }
       }
 
       const scrollAmount = getScrollSpeed(deltaTime);
@@ -148,15 +154,18 @@ export default function Teleprompter({ text }: TeleprompterProps) {
   };
 
   const adjustSpeed = (delta: number) => {
-    setSpeedLevel((prev) => Math.max(1, Math.min(10, prev + delta)));
+    setSpeedMultiplier((prev) => Math.max(0.5, Math.min(5, prev + delta)));
   };
 
   const adjustFontSize = (delta: number) => {
     setFontSize((prev) => Math.max(16, Math.min(72, prev + delta)));
   };
 
-  const adjustLineHeight = (delta: number) => {
-    setLineHeight((prev) => Math.max(1, Math.min(3, prev + delta * 0.1)));
+  const handleLineHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      setLineHeight(Math.max(1, Math.min(3, value)));
+    }
   };
 
   const adjustOpacity = (delta: number) => {
@@ -200,6 +209,10 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     if (containerRef.current) {
       containerRef.current.scrollTop = newPosition;
     }
+  };
+
+  const toggleInfiniteScroll = () => {
+    setIsInfiniteScroll(!isInfiniteScroll);
   };
 
   return (
@@ -251,15 +264,15 @@ export default function Teleprompter({ text }: TeleprompterProps) {
           </button>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => adjustSpeed(-1)}
+              onClick={() => adjustSpeed(-0.5)}
               className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
               title="Decrease Speed"
             >
               <FaMinus />
             </button>
-            <span className="min-w-[3rem] text-center">{speedLevel}/10</span>
+            <span className="min-w-[3rem] text-center">{speedMultiplier}x</span>
             <button
-              onClick={() => adjustSpeed(1)}
+              onClick={() => adjustSpeed(0.5)}
               className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
               title="Increase Speed"
             >
@@ -284,24 +297,32 @@ export default function Teleprompter({ text }: TeleprompterProps) {
             </button>
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => adjustLineHeight(-0.1)}
-              className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-              title="Decrease Line Height"
-            >
-              <FaMinus />
-            </button>
-            <span className="min-w-[3rem] text-center">
-              {lineHeight.toFixed(1)}
-            </span>
-            <button
-              onClick={() => adjustLineHeight(0.1)}
-              className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-              title="Increase Line Height"
-            >
-              <FaPlus />
-            </button>
+            <input
+              type="number"
+              value={lineHeight}
+              onChange={handleLineHeightChange}
+              step="0.1"
+              min="1"
+              max="3"
+              className="w-16 bg-gray-700 rounded px-2 py-1 text-center"
+              title="Line Height"
+            />
           </div>
+          <button
+            onClick={toggleInfiniteScroll}
+            className={`p-2 rounded-full transition-colors ${
+              isInfiniteScroll
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-gray-600 hover:bg-gray-700'
+            }`}
+            title={
+              isInfiniteScroll
+                ? 'Disable Infinite Scroll'
+                : 'Enable Infinite Scroll'
+            }
+          >
+            <FaUndo className={isInfiniteScroll ? 'text-green-200' : ''} />
+          </button>
           {ENABLE_PIP_MODE && (
             <>
               <div className="flex items-center space-x-2">

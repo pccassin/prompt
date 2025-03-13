@@ -11,7 +11,7 @@ export default function Home() {
     <main className="container mx-auto px-4 py-8">
       <div className="text-center mb-8">
         <h2 className="text-4xl font-display font-bold mb-4">
-          Welcome to Teleprompter
+          Welcome to Prompt
         </h2>
         <p className="text-lg text-gray-300">
           A modern, web-based teleprompter for professional presentations

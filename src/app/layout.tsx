@@ -16,7 +16,7 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  title: 'Teleprompter',
+  title: 'Prompt',
   description: 'A modern web-based teleprompter for professional presentations',
   icons: {
     icon: '/favicon.ico',
