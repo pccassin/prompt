@@ -302,6 +302,13 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 ${wrapperRef.current.innerHTML}
               </div>
               <script>
+                // Initialize state in the popup window
+                let isPlaying = false;
+                let speedMultiplier = 1;
+                let fontSize = 32;
+                let opacity = 1;
+                let isInfiniteScroll = false;
+
                 // Re-initialize controls in the new window
                 window.addEventListener('load', () => {
                   const container = document.querySelector('.pip-container');
@@ -312,12 +319,77 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                       button.addEventListener('click', (e) => {
                         const action = e.target.closest('button').getAttribute('data-action');
                         if (action) {
-                          window.opener.postMessage({ type: 'pip-action', action }, '*');
+                          // Handle actions locally in the popup
+                          switch (action) {
+                            case 'play':
+                              isPlaying = !isPlaying;
+                              window.opener.postMessage({ type: 'pip-state', state: { isPlaying } }, '*');
+                              break;
+                            case 'pause':
+                              isPlaying = false;
+                              window.opener.postMessage({ type: 'pip-state', state: { isPlaying } }, '*');
+                              break;
+                            case 'speed-up':
+                              speedMultiplier = Math.min(5, speedMultiplier + 0.5);
+                              window.opener.postMessage({ type: 'pip-state', state: { speedMultiplier } }, '*');
+                              break;
+                            case 'speed-down':
+                              speedMultiplier = Math.max(0.5, speedMultiplier - 0.5);
+                              window.opener.postMessage({ type: 'pip-state', state: { speedMultiplier } }, '*');
+                              break;
+                            case 'font-up':
+                              fontSize = Math.min(72, fontSize + 2);
+                              window.opener.postMessage({ type: 'pip-state', state: { fontSize } }, '*');
+                              break;
+                            case 'font-down':
+                              fontSize = Math.max(16, fontSize - 2);
+                              window.opener.postMessage({ type: 'pip-state', state: { fontSize } }, '*');
+                              break;
+                            case 'opacity-up':
+                              opacity = Math.min(1, opacity + 0.1);
+                              window.opener.postMessage({ type: 'pip-state', state: { opacity } }, '*');
+                              break;
+                            case 'opacity-down':
+                              opacity = Math.max(0.3, opacity - 0.1);
+                              window.opener.postMessage({ type: 'pip-state', state: { opacity } }, '*');
+                              break;
+                            case 'dock':
+                              window.opener.postMessage({ type: 'pip-action', action: 'dock' }, '*');
+                              break;
+                            case 'close':
+                              window.opener.postMessage({ type: 'pip-action', action: 'close' }, '*');
+                              break;
+                          }
+                          // Update UI
+                          updateUI();
                         }
                       });
                     });
                   }
                 });
+
+                function updateUI() {
+                  const container = document.querySelector('.pip-container');
+                  if (container) {
+                    // Update speed display
+                    const speedDisplay = container.querySelector('[data-display="speed"]');
+                    if (speedDisplay) speedDisplay.textContent = speedMultiplier + 'x';
+
+                    // Update font size display
+                    const fontSizeDisplay = container.querySelector('[data-display="fontSize"]');
+                    if (fontSizeDisplay) fontSizeDisplay.textContent = fontSize + 'px';
+
+                    // Update opacity display
+                    const opacityDisplay = container.querySelector('[data-display="opacity"]');
+                    if (opacityDisplay) opacityDisplay.textContent = Math.round(opacity * 100) + '%';
+
+                    // Update play/pause button
+                    const playButton = container.querySelector('[data-action="play"]');
+                    if (playButton) {
+                      playButton.innerHTML = isPlaying ? '<svg>...</svg>' : '<svg>...</svg>';
+                    }
+                  }
+                }
 
                 // Listen for messages from the main window
                 window.addEventListener('message', (event) => {
@@ -339,33 +411,17 @@ export default function Teleprompter({ text }: TeleprompterProps) {
 
         // Listen for messages from the popup
         window.addEventListener('message', (event) => {
-          if (event.data.type === 'pip-action') {
+          if (event.data.type === 'pip-state') {
+            // Update state in the main window
+            const { state } = event.data;
+            if (state.isPlaying !== undefined) setIsPlaying(state.isPlaying);
+            if (state.speedMultiplier !== undefined)
+              setSpeedMultiplier(state.speedMultiplier);
+            if (state.fontSize !== undefined) setFontSize(state.fontSize);
+            if (state.opacity !== undefined) setOpacity(state.opacity);
+          } else if (event.data.type === 'pip-action') {
             // Handle actions from the popup
             switch (event.data.action) {
-              case 'play':
-                handlePlayPause();
-                break;
-              case 'pause':
-                handlePlayPause();
-                break;
-              case 'speed-up':
-                adjustSpeed(0.5);
-                break;
-              case 'speed-down':
-                adjustSpeed(-0.5);
-                break;
-              case 'font-up':
-                adjustFontSize(2);
-                break;
-              case 'font-down':
-                adjustFontSize(-2);
-                break;
-              case 'opacity-up':
-                adjustOpacity(0.1);
-                break;
-              case 'opacity-down':
-                adjustOpacity(-0.1);
-                break;
               case 'dock':
                 setIsPipFloating(false);
                 popupRef.close();
@@ -465,7 +521,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 >
                   <FaMinus />
                 </button>
-                <span className="min-w-[3rem] text-center">
+                <span data-display="speed" className="min-w-[3rem] text-center">
                   {speedMultiplier}x
                 </span>
                 <button
@@ -486,7 +542,12 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 >
                   <MdTextDecrease />
                 </button>
-                <span className="min-w-[3rem] text-center">{fontSize}px</span>
+                <span
+                  data-display="fontSize"
+                  className="min-w-[3rem] text-center"
+                >
+                  {fontSize}px
+                </span>
                 <button
                   onClick={() => adjustFontSize(2)}
                   data-action="font-up"
@@ -535,7 +596,10 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                     >
                       <FaMinus />
                     </button>
-                    <span className="min-w-[3rem] text-center flex items-center gap-1">
+                    <span
+                      data-display="opacity"
+                      className="min-w-[3rem] text-center flex items-center gap-1"
+                    >
                       {Math.round(opacity * 100)}%
                     </span>
                     <button
