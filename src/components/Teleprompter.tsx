@@ -11,8 +11,15 @@ import {
   FaCompress,
   FaFastForward,
   FaFastBackward,
+  FaGripVertical,
 } from 'react-icons/fa';
-import { MdTextIncrease, MdTextDecrease, MdOpacity } from 'react-icons/md';
+import {
+  MdTextIncrease,
+  MdTextDecrease,
+  MdOpacity,
+  MdSpeed,
+} from 'react-icons/md';
+import { BsTextParagraph } from 'react-icons/bs';
 
 interface TeleprompterProps {
   text: string;
@@ -23,7 +30,7 @@ const ENABLE_PIP_MODE = true;
 
 export default function Teleprompter({ text }: TeleprompterProps) {
   const [isScrolling, setIsScrolling] = useState(false);
-  const [speedMultiplier, setSpeedMultiplier] = useState(1); // 1x, 2x, etc.
+  const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [fontSize, setFontSize] = useState(32);
   const [lineHeight, setLineHeight] = useState(1.5);
   const [isPIPMode, setIsPIPMode] = useState(false);
@@ -36,6 +43,14 @@ export default function Teleprompter({ text }: TeleprompterProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [isInfiniteScroll, setIsInfiniteScroll] = useState(false);
+  const [pipSize, setPipSize] = useState({ width: 384, height: 256 });
+  const [isPipFloating, setIsPipFloating] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStartSize, setResizeStartSize] = useState({
+    width: 0,
+    height: 0,
+  });
+  const [resizeStartPos, setResizeStartPos] = useState({ x: 0, y: 0 });
 
   // Calculate actual scroll speed based on font size and speed multiplier
   const getScrollSpeed = (deltaTime: number) => {
@@ -215,168 +230,259 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     setIsInfiniteScroll(!isInfiniteScroll);
   };
 
+  const handlePipResizeStart = (e: React.MouseEvent) => {
+    if (!isPIPMode) return;
+    e.preventDefault();
+    setIsResizing(true);
+    setResizeStartSize(pipSize);
+    setResizeStartPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handlePipResizeMove = (e: MouseEvent) => {
+    if (!isResizing) return;
+    e.preventDefault();
+    const deltaX = e.clientX - resizeStartPos.x;
+    const deltaY = e.clientY - resizeStartPos.y;
+    setPipSize({
+      width: Math.max(200, Math.min(800, resizeStartSize.width + deltaX)),
+      height: Math.max(150, Math.min(600, resizeStartSize.height + deltaY)),
+    });
+  };
+
+  const handlePipResizeEnd = () => {
+    setIsResizing(false);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handlePipResizeMove);
+      document.addEventListener('mouseup', handlePipResizeEnd);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handlePipResizeMove);
+      document.removeEventListener('mouseup', handlePipResizeEnd);
+    };
+  }, [isResizing]);
+
+  const togglePipFloating = () => {
+    setIsPipFloating(!isPipFloating);
+    if (!isPipFloating && wrapperRef.current) {
+      wrapperRef.current.style.position = 'fixed';
+      wrapperRef.current.style.top = '20px';
+      wrapperRef.current.style.right = '20px';
+    }
+  };
+
   return (
-    <div
-      ref={wrapperRef}
-      className={`${
-        isPIPMode
-          ? 'fixed top-4 right-4 w-96 z-50 cursor-move shadow-2xl rounded-lg'
-          : 'w-full'
-      } transition-all duration-300 ease-in-out`}
-      style={{
-        opacity: opacity,
-        transform: isPIPMode ? undefined : 'none',
-      }}
-    >
+    <>
       <div
-        className={`flex flex-col ${
-          isPIPMode ? 'h-64' : 'h-[calc(100vh-12rem)]'
-        } bg-black text-white p-4 rounded-lg`}
+        ref={wrapperRef}
+        className={`${
+          isPIPMode
+            ? `fixed z-50 cursor-move shadow-2xl rounded-lg ${
+                isPipFloating ? 'border-2 border-blue-500' : ''
+              }`
+            : 'w-full'
+        } transition-all duration-300 ease-in-out`}
+        style={{
+          opacity: opacity,
+          transform: isPIPMode ? undefined : 'none',
+          width: isPIPMode ? `${pipSize.width}px` : '100%',
+          height: isPIPMode ? `${pipSize.height}px` : 'auto',
+        }}
       >
-        <div className="flex justify-center space-x-2 mb-4 flex-wrap gap-2">
-          <button
-            onClick={handleFastBackward}
-            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-            title="Fast Backward"
-          >
-            <FaFastBackward />
-          </button>
-          <button
-            onClick={handlePlayPause}
-            className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors"
-            title={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? <FaPause /> : <FaPlay />}
-          </button>
-          <button
-            onClick={handleFastForward}
-            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-            title="Fast Forward"
-          >
-            <FaFastForward />
-          </button>
-          <button
-            onClick={resetScroll}
-            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-            title="Reset"
-          >
-            <FaUndo />
-          </button>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => adjustSpeed(-0.5)}
-              className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-              title="Decrease Speed"
-            >
-              <FaMinus />
-            </button>
-            <span className="min-w-[3rem] text-center">{speedMultiplier}x</span>
-            <button
-              onClick={() => adjustSpeed(0.5)}
-              className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-              title="Increase Speed"
-            >
-              <FaPlus />
-            </button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => adjustFontSize(-2)}
-              className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-              title="Decrease Font Size"
-            >
-              <MdTextDecrease />
-            </button>
-            <span className="min-w-[3rem] text-center">{fontSize}px</span>
-            <button
-              onClick={() => adjustFontSize(2)}
-              className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-              title="Increase Font Size"
-            >
-              <MdTextIncrease />
-            </button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="number"
-              value={lineHeight}
-              onChange={handleLineHeightChange}
-              step="0.1"
-              min="1"
-              max="3"
-              className="w-16 bg-gray-700 rounded px-2 py-1 text-center"
-              title="Line Height"
-            />
-          </div>
-          <button
-            onClick={toggleInfiniteScroll}
-            className={`p-2 rounded-full transition-colors ${
-              isInfiniteScroll
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-gray-600 hover:bg-gray-700'
-            }`}
-            title={
-              isInfiniteScroll
-                ? 'Disable Infinite Scroll'
-                : 'Enable Infinite Scroll'
-            }
-          >
-            <FaUndo className={isInfiniteScroll ? 'text-green-200' : ''} />
-          </button>
-          {ENABLE_PIP_MODE && (
-            <>
+        <div
+          className={`flex flex-col ${
+            isPIPMode ? 'h-full' : 'h-[calc(100vh-12rem)]'
+          } bg-black text-white rounded-lg`}
+        >
+          <div className="flex justify-between items-center p-2 border-b border-gray-700">
+            <div className="flex items-center space-x-2">
+              <FaGripVertical className="cursor-move" />
+              <span className="text-sm font-medium">Prompt Controls</span>
+            </div>
+            {isPIPMode && (
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => adjustOpacity(-0.1)}
+                  onClick={togglePipFloating}
+                  className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-700"
+                  title={isPipFloating ? 'Dock PIP' : 'Float PIP'}
+                >
+                  {isPipFloating ? 'Dock' : 'Float'}
+                </button>
+                <button
+                  onClick={() => setIsPIPMode(false)}
+                  className="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-700"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 p-4">
+            <div className="flex justify-center space-x-2 mb-4 flex-wrap gap-2">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleFastBackward}
                   className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                  title="Decrease Opacity"
+                  title="Fast Backward"
+                >
+                  <FaFastBackward />
+                </button>
+                <button
+                  onClick={handlePlayPause}
+                  className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors"
+                  title={isPlaying ? 'Pause' : 'Play'}
+                >
+                  {isPlaying ? <FaPause /> : <FaPlay />}
+                </button>
+                <button
+                  onClick={handleFastForward}
+                  className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                  title="Fast Forward"
+                >
+                  <FaFastForward />
+                </button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <MdSpeed className="text-gray-400" />
+                <button
+                  onClick={() => adjustSpeed(-0.5)}
+                  className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                  title="Decrease Speed"
                 >
                   <FaMinus />
                 </button>
-                <span className="min-w-[3rem] text-center flex items-center gap-1">
-                  <MdOpacity />
-                  {Math.round(opacity * 100)}%
+                <span className="min-w-[3rem] text-center">
+                  {speedMultiplier}x
                 </span>
                 <button
-                  onClick={() => adjustOpacity(0.1)}
+                  onClick={() => adjustSpeed(0.5)}
                   className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                  title="Increase Opacity"
+                  title="Increase Speed"
                 >
                   <FaPlus />
                 </button>
               </div>
+              <div className="flex items-center space-x-2">
+                <MdTextIncrease className="text-gray-400" />
+                <button
+                  onClick={() => adjustFontSize(-2)}
+                  className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                  title="Decrease Font Size"
+                >
+                  <MdTextDecrease />
+                </button>
+                <span className="min-w-[3rem] text-center">{fontSize}px</span>
+                <button
+                  onClick={() => adjustFontSize(2)}
+                  className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                  title="Increase Font Size"
+                >
+                  <MdTextIncrease />
+                </button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <BsTextParagraph className="text-gray-400" />
+                <input
+                  type="number"
+                  value={lineHeight}
+                  onChange={handleLineHeightChange}
+                  step="0.1"
+                  min="1"
+                  max="3"
+                  className="w-16 bg-gray-700 rounded px-2 py-1 text-center"
+                  title="Line Height"
+                />
+              </div>
               <button
-                onClick={togglePIPMode}
-                className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
-                title={isPIPMode ? 'Exit PIP Mode' : 'Enter PIP Mode'}
+                onClick={toggleInfiniteScroll}
+                className={`p-2 rounded-full transition-colors ${
+                  isInfiniteScroll
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-gray-600 hover:bg-gray-700'
+                }`}
+                title={
+                  isInfiniteScroll
+                    ? 'Disable Infinite Scroll'
+                    : 'Enable Infinite Scroll'
+                }
               >
-                {isPIPMode ? <FaCompress /> : <FaExpand />}
+                <FaUndo className={isInfiniteScroll ? 'text-green-200' : ''} />
               </button>
-            </>
+              {ENABLE_PIP_MODE && (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <MdOpacity className="text-gray-400" />
+                    <button
+                      onClick={() => adjustOpacity(-0.1)}
+                      className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                      title="Decrease Opacity"
+                    >
+                      <FaMinus />
+                    </button>
+                    <span className="min-w-[3rem] text-center flex items-center gap-1">
+                      {Math.round(opacity * 100)}%
+                    </span>
+                    <button
+                      onClick={() => adjustOpacity(0.1)}
+                      className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                      title="Increase Opacity"
+                    >
+                      <FaPlus />
+                    </button>
+                  </div>
+                  <button
+                    onClick={togglePIPMode}
+                    className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+                    title={isPIPMode ? 'Exit PIP Mode' : 'Enter PIP Mode'}
+                  >
+                    {isPIPMode ? <FaCompress /> : <FaExpand />}
+                  </button>
+                </>
+              )}
+            </div>
+            <div
+              ref={containerRef}
+              className="flex-1 overflow-y-scroll mirror-text hide-scrollbar"
+              style={{
+                perspective: '1000px',
+                transform: 'rotateX(10deg)',
+                height: isPIPMode ? `${pipSize.height - 120}px` : 'auto',
+              }}
+            >
+              <div
+                ref={contentRef}
+                className="whitespace-pre-wrap p-4"
+                style={{
+                  fontSize: `${fontSize}px`,
+                  lineHeight: lineHeight,
+                  transition:
+                    'font-size 0.2s ease-in-out, line-height 0.2s ease-in-out',
+                }}
+              >
+                {text}
+              </div>
+            </div>
+          </div>
+          {isPIPMode && (
+            <div
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+              onMouseDown={handlePipResizeStart}
+            />
           )}
         </div>
-        <div
-          ref={containerRef}
-          className="flex-1 overflow-y-scroll mirror-text hide-scrollbar"
-          style={{
-            perspective: '1000px',
-            transform: 'rotateX(10deg)',
-          }}
-        >
-          <div
-            ref={contentRef}
-            className="whitespace-pre-wrap p-4"
-            style={{
-              fontSize: `${fontSize}px`,
-              lineHeight: lineHeight,
-              transition:
-                'font-size 0.2s ease-in-out, line-height 0.2s ease-in-out',
-            }}
-          >
-            {text}
-          </div>
-        </div>
       </div>
-    </div>
+      <div className="fixed bottom-4 right-4 text-xs text-gray-400 z-50">
+        <a
+          href="https://linkedin.com/in/pccassin"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-blue-400 transition-colors"
+        >
+          Product engineered by Paulo Cassin
+        </a>
+      </div>
+    </>
   );
 }
