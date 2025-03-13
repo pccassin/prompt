@@ -2,11 +2,28 @@
 const path = require('path');
 
 const nextConfig = {
+  /**
+   * Enable static exports
+   */
   output: 'export',
+
+  /**
+   * Set base path for staging and production
+   */
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+
+  /**
+   * Disable server-based image optimization
+   */
   images: {
     unoptimized: true,
   },
-  basePath: process.env.NODE_ENV === 'production' ? '/prompt' : '',
+
+  /**
+   * Add trailing slash to match GitHub Pages behavior
+   */
+  trailingSlash: true,
+
   assetPrefix: process.env.NODE_ENV === 'production' ? '/prompt/' : '',
   webpack: (config) => {
     config.resolve.alias = {
