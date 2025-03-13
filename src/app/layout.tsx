@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.ico',
   },
-  metadataBase: new URL('https://pccassin.github.io/teleprompter'),
+  metadataBase: new URL('https://pccassin.github.io/prompt'),
 };
 
 export default function RootLayout({

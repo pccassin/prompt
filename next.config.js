@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
-  basePath: '/teleprompter',
-  assetPrefix: '/teleprompter/',
+  basePath: '/prompt',
+  assetPrefix: '/prompt/',
   distDir: 'out',
   cleanDistDir: true,
   webpack: (config) => {
