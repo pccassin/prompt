@@ -6,10 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       promote_staging:
-        description: 'Promote staging to production'
-        required: true
+        description: 'Promote staging build to production'
+        required: false
         type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -19,8 +18,10 @@ permissions:
 
 jobs:
   build:
-    if: github.event.inputs.promote_staging != 'true'
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,6 +73,9 @@ jobs:
           }
           EOL
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
       - name: Build Project
         env:
           NEXT_TELEMETRY_DISABLED: 1
@@ -81,11 +85,14 @@ jobs:
           npm run build
           touch out/.nojekyll
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
+          path: out
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   promote-staging:
     if: github.event.inputs.promote_staging == 'true'

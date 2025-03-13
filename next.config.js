@@ -8,9 +8,10 @@ const nextConfig = {
   output: 'export',
 
   /**
-   * Set base path for staging and production
+   * Set base path and asset prefix based on environment
    */
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '',
 
   /**
    * Disable server-based image optimization
@@ -24,7 +25,6 @@ const nextConfig = {
    */
   trailingSlash: true,
 
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/prompt/' : '',
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
