@@ -26,15 +26,15 @@ export default function GoogleDocsInput({
         throw new Error('Invalid Google Docs URL');
       }
 
-      // In a real implementation, you would:
-      // 1. Set up Google Docs API credentials
-      // 2. Make an API call to fetch the document content
-      // 3. Process and format the content
+      // Make request to Google Docs API
+      const response = await fetch(`/api/google-docs?docId=${docId}`);
 
-      // For now, we'll just show a message
-      onTextChange(
-        'Google Docs integration coming soon! Please paste your text directly.'
-      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch document');
+      }
+
+      const data = await response.json();
+      onTextChange(data.text);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load document');
     } finally {

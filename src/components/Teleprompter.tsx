@@ -65,20 +65,12 @@ export default function Teleprompter({ text }: TeleprompterProps) {
     lastTimeRef.current = timestamp;
 
     if (containerRef.current && contentRef.current) {
-      const maxScroll =
-        contentRef.current.offsetHeight - containerRef.current.offsetHeight;
+      const maxScroll = contentRef.current.offsetHeight / 2; // Half of the duplicated content
 
       if (containerRef.current.scrollTop >= maxScroll) {
-        if (isInfiniteScroll) {
-          // Reset to top for infinite scroll
-          containerRef.current.scrollTop = 0;
-          setPosition(0);
-        } else {
-          setIsScrolling(false);
-          setIsPlaying(false);
-          lastTimeRef.current = 0;
-          return;
-        }
+        // Reset to the beginning of the first copy
+        containerRef.current.scrollTop = 0;
+        setPosition(0);
       }
 
       const scrollAmount = getScrollSpeed(deltaTime);
@@ -267,9 +259,38 @@ export default function Teleprompter({ text }: TeleprompterProps) {
   const togglePipFloating = () => {
     setIsPipFloating(!isPipFloating);
     if (!isPipFloating && wrapperRef.current) {
-      wrapperRef.current.style.position = 'fixed';
-      wrapperRef.current.style.top = '20px';
-      wrapperRef.current.style.right = '20px';
+      // Create a new window for floating mode
+      const width = pipSize.width;
+      const height = pipSize.height;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
+
+      const popup = window.open(
+        '',
+        'Prompt PIP',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+
+      if (popup) {
+        // Move the PIP content to the new window
+        const content = wrapperRef.current.innerHTML;
+        popup.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Prompt PIP</title>
+              <style>
+                body { margin: 0; background: black; color: white; }
+                ${document.querySelector('style')?.innerHTML}
+              </style>
+            </head>
+            <body>
+              ${content}
+            </body>
+          </html>
+        `);
+        popup.document.close();
+      }
     }
   };
 
@@ -462,6 +483,12 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 }}
               >
                 {text}
+                {isInfiniteScroll && text && (
+                  <>
+                    <div className="h-8" /> {/* Spacer */}
+                    {text}
+                  </>
+                )}
               </div>
             </div>
           </div>
