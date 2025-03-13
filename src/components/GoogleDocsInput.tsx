@@ -1,14 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FaGoogle } from 'react-icons/fa';
+import { FaGoogle, FaGithub } from 'react-icons/fa';
 
 interface GoogleDocsInputProps {
   onTextChange: (text: string) => void;
+  onGitHubClick: () => void;
 }
 
 export default function GoogleDocsInput({
   onTextChange,
+  onGitHubClick,
 }: GoogleDocsInputProps) {
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +69,14 @@ export default function GoogleDocsInput({
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium disabled:opacity-50"
           >
             {isLoading ? 'Loading...' : 'Load'}
+          </button>
+          <button
+            type="button"
+            onClick={onGitHubClick}
+            className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+            title="Load from GitHub"
+          >
+            <FaGithub />
           </button>
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
