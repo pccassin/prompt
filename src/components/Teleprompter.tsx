@@ -295,6 +295,9 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 ${styles}
                 body { margin: 0; background: black; color: white; }
                 .pip-container { width: 100%; height: 100%; }
+                .mirror-text { transform: scaleY(-1); }
+                .hide-scrollbar::-webkit-scrollbar { display: none; }
+                .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
               </style>
             </head>
             <body>
@@ -308,6 +311,11 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 let fontSize = 32;
                 let opacity = 1;
                 let isInfiniteScroll = false;
+                let lineHeight = 1.5;
+
+                // SVG icons for play/pause
+                const playIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M96 448V64c0-17.7 14.3-32 32-32h32c17.7 0 32 14.3 32 32V448c0 17.7-14.3 32-32 32H128c-17.7 0-32-14.3-32-32zm96-416h32c17.7 0 32 14.3 32 32V448c0 17.7-14.3 32-32 32H192c-17.7 0-32-14.3-32-32V64c0-17.7 14.3-32 32-32z"/></svg>';
+                const pauseIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zM188.3 147.1c7.6-4.2 16.8-4.1 24.3 .5l144 88c7.1 4.4 11.5 12 11.5 19.8s-4.4 15.4-11.5 19.8l-144 88c-7.4 4.5-16.7 4.7-24.3 .5s-12.3-12.2-12.3-20.3V167.4c0-8.1 4.9-15.4 12.3-20.3z"/></svg>';
 
                 // Re-initialize controls in the new window
                 window.addEventListener('load', () => {
@@ -365,6 +373,18 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                         }
                       });
                     });
+
+                    // Add line height input handler
+                    const lineHeightInput = container.querySelector('input[type="number"]');
+                    if (lineHeightInput) {
+                      lineHeightInput.addEventListener('change', (e) => {
+                        const value = parseFloat(e.target.value);
+                        if (!isNaN(value)) {
+                          lineHeight = Math.max(1, Math.min(3, value));
+                          updateUI();
+                        }
+                      });
+                    }
                   }
                 });
 
@@ -386,7 +406,17 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                     // Update play/pause button
                     const playButton = container.querySelector('[data-action="play"]');
                     if (playButton) {
-                      playButton.innerHTML = isPlaying ? '<svg>...</svg>' : '<svg>...</svg>';
+                      playButton.innerHTML = isPlaying ? pauseIcon : playIcon;
+                    }
+
+                    // Update container opacity
+                    container.style.opacity = opacity;
+
+                    // Update text styles
+                    const content = container.querySelector('.whitespace-pre-wrap');
+                    if (content) {
+                      content.style.fontSize = fontSize + 'px';
+                      content.style.lineHeight = lineHeight;
                     }
                   }
                 }
