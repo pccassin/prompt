@@ -25,6 +25,8 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
   const [fontSize, setFontSize] = useState(32);
   const [isPIPMode, setIsPIPMode] = useState(false);
   const [opacity, setOpacity] = useState(1);
+  const [lineSpacing, setLineSpacing] = useState(1.5);
+  const [isInfiniteScroll, setIsInfiniteScroll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
@@ -49,9 +51,14 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
         contentRef.current.offsetHeight - containerRef.current.offsetHeight;
 
       if (containerRef.current.scrollTop >= maxScroll) {
-        setIsScrolling(false);
-        lastTimeRef.current = 0;
-        return;
+        if (isInfiniteScroll) {
+          // Reset to top for infinite scroll
+          containerRef.current.scrollTop = 0;
+        } else {
+          setIsScrolling(false);
+          lastTimeRef.current = 0;
+          return;
+        }
       }
 
       const scrollAmount = getScrollSpeed(deltaTime);
@@ -151,6 +158,10 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
     setOpacity((prev) => Math.max(0.3, Math.min(1, prev + delta)));
   };
 
+  const adjustLineSpacing = (delta: number) => {
+    setLineSpacing((prev) => Math.max(1, Math.min(3, prev + delta)));
+  };
+
   const togglePIPMode = () => {
     if (!ENABLE_PIP_MODE) return;
     setIsPIPMode(!isPIPMode);
@@ -233,6 +244,38 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
               <MdTextIncrease />
             </button>
           </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => adjustLineSpacing(-0.1)}
+              className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+              title="Decrease Line Spacing"
+            >
+              <FaMinus />
+            </button>
+            <span className="min-w-[3rem] text-center">
+              {lineSpacing.toFixed(1)}
+            </span>
+            <button
+              onClick={() => adjustLineSpacing(0.1)}
+              className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+              title="Increase Line Spacing"
+            >
+              <FaPlus />
+            </button>
+          </div>
+          <button
+            onClick={() => setIsInfiniteScroll(!isInfiniteScroll)}
+            className={`p-2 rounded-full ${
+              isInfiniteScroll ? 'bg-blue-600' : 'bg-gray-600'
+            } hover:bg-blue-700 transition-colors`}
+            title={
+              isInfiniteScroll
+                ? 'Disable Infinite Scroll'
+                : 'Enable Infinite Scroll'
+            }
+          >
+            <FaUndo className={isInfiniteScroll ? 'animate-spin' : ''} />
+          </button>
           {ENABLE_PIP_MODE && (
             <>
               <div className="flex items-center space-x-2">
@@ -276,7 +319,11 @@ export const Teleprompter: React.FC<TeleprompterProps> = ({ text }) => {
           <div
             ref={contentRef}
             className="whitespace-pre-wrap p-4"
-            style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
+            style={{
+              fontSize: `${fontSize}px`,
+              lineHeight: lineSpacing,
+              animation: isInfiniteScroll ? 'none' : undefined,
+            }}
           >
             {text}
           </div>
