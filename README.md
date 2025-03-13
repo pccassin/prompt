@@ -9,6 +9,8 @@ A modern, feature-rich teleprompter web application built with Next.js and TypeS
 - Draggable floating window
 - Mirror text display
 - Modern UI with smooth animations
+- Infinite scroll mode
+- Line spacing control
 
 ## Development Workflow
 
@@ -28,6 +30,7 @@ This project uses a staging-to-production deployment workflow for safe and contr
 ### Development Process
 
 1. Create a feature branch from `develop`:
+
    ```bash
    git checkout develop
    git pull origin develop
@@ -35,6 +38,7 @@ This project uses a staging-to-production deployment workflow for safe and contr
    ```
 
 2. Make your changes and commit them:
+
    ```bash
    git add .
    git commit -m "Description of your changes"
@@ -50,6 +54,7 @@ This project uses a staging-to-production deployment workflow for safe and contr
 There are two ways to deploy to production:
 
 1. **Direct Push to Main**:
+
    - For urgent hotfixes only
    - Will trigger automatic production deployment
 
@@ -66,6 +71,7 @@ There are two ways to deploy to production:
 ### Environment Configuration
 
 The app uses different base paths for staging and production:
+
 - Staging: `/prompt-staging`
 - Production: `/prompt`
 
@@ -74,11 +80,13 @@ Configuration is handled automatically by the deployment workflows.
 ## Local Development
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Start development server:
+
    ```bash
    npm run dev
    ```
