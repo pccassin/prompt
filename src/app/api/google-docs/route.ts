@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const docId = searchParams.get('docId');
@@ -12,14 +15,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    // In a production environment, you would:
-    // 1. Use proper Google Docs API credentials
-    // 2. Implement proper authentication
-    // 3. Handle rate limiting and caching
-
-    // For now, we'll use a simple fetch to get the document content
+    // Use the Google Docs export URL
     const response = await fetch(
-      `https://docs.google.com/document/d/${docId}/export?format=txt`
+      `https://docs.google.com/document/d/${docId}/export?format=txt`,
+      {
+        headers: {
+          Accept: 'text/plain',
+        },
+      }
     );
 
     if (!response.ok) {
