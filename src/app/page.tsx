@@ -22,7 +22,12 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-gray-800 rounded-lg p-6">
           <GoogleDocsInput onTextChange={setText} />
-          <TextInput value={text} onChange={setText} />
+          <div className="mt-4">
+            <h3 className="text-lg font-medium mb-2">
+              Or paste your text directly:
+            </h3>
+            <TextInput value={text} onChange={setText} />
+          </div>
         </div>
         <div className="bg-gray-800 rounded-lg p-6">
           <Teleprompter text={text} />
