@@ -70,6 +70,10 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          enablement: true
+          path: out
+          base_path: /prompt-staging
 
       - name: Build Project
         env:
