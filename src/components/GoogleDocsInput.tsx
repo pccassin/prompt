@@ -26,15 +26,22 @@ export default function GoogleDocsInput({
         throw new Error('Invalid Google Docs URL');
       }
 
-      // Make request to Google Docs API
-      const response = await fetch(`/api/google-docs?docId=${docId}`);
+      // Use the Google Docs export URL directly
+      const response = await fetch(
+        `https://docs.google.com/document/d/${docId}/export?format=txt`,
+        {
+          headers: {
+            Accept: 'text/plain',
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Failed to fetch document');
       }
 
-      const data = await response.json();
-      onTextChange(data.text);
+      const text = await response.text();
+      onTextChange(text);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load document');
     } finally {
