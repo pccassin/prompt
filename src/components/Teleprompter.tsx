@@ -272,24 +272,112 @@ export default function Teleprompter({ text }: TeleprompterProps) {
       );
 
       if (popup) {
-        // Move the PIP content to the new window
-        const content = wrapperRef.current.innerHTML;
+        // Get all styles from the current document
+        const styles = Array.from(document.styleSheets)
+          .map((sheet) => {
+            try {
+              return Array.from(sheet.cssRules)
+                .map((rule) => rule.cssText)
+                .join('\n');
+            } catch (e) {
+              return '';
+            }
+          })
+          .join('\n');
+
+        // Create a new document with all necessary styles and scripts
         popup.document.write(`
           <!DOCTYPE html>
           <html>
             <head>
               <title>Prompt PIP</title>
               <style>
+                ${styles}
                 body { margin: 0; background: black; color: white; }
-                ${document.querySelector('style')?.innerHTML}
+                .pip-container { width: 100%; height: 100%; }
               </style>
             </head>
             <body>
-              ${content}
+              <div class="pip-container">
+                ${wrapperRef.current.innerHTML}
+              </div>
+              <script>
+                // Re-initialize controls in the new window
+                window.addEventListener('load', () => {
+                  const container = document.querySelector('.pip-container');
+                  if (container) {
+                    // Re-attach event listeners
+                    const buttons = container.querySelectorAll('button');
+                    buttons.forEach(button => {
+                      button.addEventListener('click', (e) => {
+                        const action = e.target.closest('button').getAttribute('data-action');
+                        if (action) {
+                          window.opener.postMessage({ type: 'pip-action', action }, '*');
+                        }
+                      });
+                    });
+                  }
+                });
+
+                // Listen for messages from the main window
+                window.addEventListener('message', (event) => {
+                  if (event.data.type === 'pip-update') {
+                    const container = document.querySelector('.pip-container');
+                    if (container) {
+                      container.innerHTML = event.data.content;
+                    }
+                  }
+                });
+              </script>
             </body>
           </html>
         `);
         popup.document.close();
+
+        // Store the popup window reference
+        const popupRef = popup;
+
+        // Listen for messages from the popup
+        window.addEventListener('message', (event) => {
+          if (event.data.type === 'pip-action') {
+            // Handle actions from the popup
+            switch (event.data.action) {
+              case 'play':
+                handlePlayPause();
+                break;
+              case 'pause':
+                handlePlayPause();
+                break;
+              case 'speed-up':
+                adjustSpeed(0.5);
+                break;
+              case 'speed-down':
+                adjustSpeed(-0.5);
+                break;
+              case 'font-up':
+                adjustFontSize(2);
+                break;
+              case 'font-down':
+                adjustFontSize(-2);
+                break;
+              case 'opacity-up':
+                adjustOpacity(0.1);
+                break;
+              case 'opacity-down':
+                adjustOpacity(-0.1);
+                break;
+              case 'dock':
+                setIsPipFloating(false);
+                popupRef.close();
+                break;
+              case 'close':
+                setIsPIPMode(false);
+                setIsPipFloating(false);
+                popupRef.close();
+                break;
+            }
+          }
+        });
       }
     }
   };
@@ -315,7 +403,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
         <div
           className={`flex flex-col ${
             isPIPMode ? 'h-full' : 'h-[calc(100vh-12rem)]'
-          } bg-black text-white rounded-lg`}
+          } bg-black text-white rounded-lg overflow-hidden`}
         >
           <div className="flex justify-between items-center p-2 border-b border-gray-700">
             <div className="flex items-center space-x-2">
@@ -326,6 +414,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={togglePipFloating}
+                  data-action="dock"
                   className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-700"
                   title={isPipFloating ? 'Dock PIP' : 'Float PIP'}
                 >
@@ -333,6 +422,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 </button>
                 <button
                   onClick={() => setIsPIPMode(false)}
+                  data-action="close"
                   className="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-700"
                 >
                   Close
@@ -340,7 +430,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
               </div>
             )}
           </div>
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-4 flex flex-col overflow-hidden">
             <div className="flex justify-center space-x-2 mb-4 flex-wrap gap-2">
               <div className="flex items-center space-x-2">
                 <button
@@ -352,6 +442,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 </button>
                 <button
                   onClick={handlePlayPause}
+                  data-action={isPlaying ? 'pause' : 'play'}
                   className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors"
                   title={isPlaying ? 'Pause' : 'Play'}
                 >
@@ -379,6 +470,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 </span>
                 <button
                   onClick={() => adjustSpeed(0.5)}
+                  data-action="speed-up"
                   className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
                   title="Increase Speed"
                 >
@@ -397,6 +489,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                 <span className="min-w-[3rem] text-center">{fontSize}px</span>
                 <button
                   onClick={() => adjustFontSize(2)}
+                  data-action="font-up"
                   className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
                   title="Increase Font Size"
                 >
@@ -447,6 +540,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
                     </span>
                     <button
                       onClick={() => adjustOpacity(0.1)}
+                      data-action="opacity-up"
                       className="p-2 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
                       title="Increase Opacity"
                     >
@@ -465,7 +559,7 @@ export default function Teleprompter({ text }: TeleprompterProps) {
             </div>
             <div
               ref={containerRef}
-              className="flex-1 overflow-y-scroll mirror-text hide-scrollbar"
+              className="flex-1 overflow-y-auto mirror-text hide-scrollbar"
               style={{
                 perspective: '1000px',
                 transform: 'rotateX(10deg)',
